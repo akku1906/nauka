@@ -2,6 +2,28 @@
 
 Sesja w chmurze, 3 listopada 2026. Pracowałem sam, według `ZADANIE.md`, faza po fazie. Każda decyzja jest w sekcji „Decyzje”, a każda przeszkoda w sekcji „Ściany”.
 
+## Podsumowanie
+
+- Aplikacja działa pod adresem **https://akku1906.github.io/nauka/** jako instalowalna PWA. Wszystkie pliki zwracają 200, a ich zawartość jest identyczna z repozytorium.
+- Testy lokalne: **28 z 28** (`python3 testy/run.py`). Testy na adresie produkcyjnym: **4 z 4** (1, 5, 8, 9).
+- Najważniejsze naprawy: rysunki SVG wyświetlały się jako tekst; nie było importu postępu; przycisk wstecz zamykał aplikację; klucze zapisu niezgodne z `CLAUDE.md` (teraz `nauka:<temat>:<id>`, z migracją); identyfikator aplikacji w manifeście byłby wspólny dla całej domeny; temat figur uczył twierdzenia odwrotnego do Pitagorasa, wyłączonego z podstawy; rysunek w `g04` przeczył danym.
+- Do sprawdzenia na telefonie: klawiatura z minusem w zadaniu `k26`, instalacja i ikona, import postępu ze starej wersji przez systemowy wybór pliku, pamięć trwała, tryb samolotowy, przycisk wstecz. Instrukcja krok po kroku jest niżej.
+
+## Przebieg i commity
+
+| kolejność | commit | co |
+|---|---|---|
+| 1 | [`62e5693`](https://github.com/akku1906/nauka/commit/62e569366cadee50acb00532ae24a67146f0239b) | faza 0: inwentaryzacja, opis silnika |
+| 2 | [`52d9b35`](https://github.com/akku1906/nauka/commit/52d9b35719d3adad37f293e2bd5c199f0595f878) | faza 1: audyt i poprawki w `silnik.html` |
+| 3 | [`b4b2a36`](https://github.com/akku1906/nauka/commit/b4b2a36c3d5c7b918442f7edc38e6af510cf6a62) | faza 2: nowy układ repozytorium, PWA, import i eksport, `docs/FORMAT.md` |
+| 4 | [`33cdba6`](https://github.com/akku1906/nauka/commit/33cdba6a09160a0297d1480d5ad4c0816d343aa2) | sprzątanie: `__pycache__` i `.gitignore` |
+| 5 | [`5626d37`](https://github.com/akku1906/nauka/commit/5626d37acc747ec9776c04705227f12ee83404fb) | faza 3: testy, poprawki znalezione przez testy (ostrzeżenia parsera, `id` manifestu) |
+| 6 | [`0212844`](https://github.com/akku1906/nauka/commit/0212844f9ab03dc2ce5fbc6db2d4aba01cfc5593) | faza 4: audyt treści, poprawki w temacie figur, test treści |
+| 7 | [`8d7fb81`](https://github.com/akku1906/nauka/commit/8d7fb81e235503b273bfc5287f069c32c8e8100a) | instrukcja dla rodzica; ten stan poszedł na `main` |
+| 8 | ostatni commit z tym raportem | faza 6: raport końcowy |
+
+Praca szła na gałęzi `claude/amazing-wozniak-huup95`, wypychanej po każdej fazie. Wdrożenie: zwykły push tej gałęzi na `main` (przewinięcie, bez merge commita), bo `main` był jej przodkiem.
+
 ## Faza 0: inwentaryzacja
 
 ### Która wersja silnika jest najnowsza
@@ -139,7 +161,7 @@ Sprawdzone w tej fazie próbą dymną (pełne testy w fazie 3): wybór klasy, li
 | 17 | kl. 4 widzi „Tematy wkrótce”, zmiana na kl. 8 w ustawieniach pokazuje tematy | przeszedł |
 | 18 | wstecz z ćwiczeń wraca do tematu, a dalej do listy | przeszedł |
 
-**Wynik: 25 z 25.** Czas całości około 80 sekund.
+**Wynik: 25 z 25** po fazie 3. Po fazie 4 doszły trzy testy treści (`testy/test_tresc.py`: przeliczone odpowiedzi w obu tematach i proporcje rysunków), razem **28 z 28**. Czas całości około 90 sekund.
 
 Sprawdziłem też, czy testy nie są puste, psując celowo dane. Manifest bez ikon i `start_url` przy teście 08 dał `start-url-not-valid` i `manifest-missing-suitable-icon`. Samo `set_offline(True)` (bez zatrzymywania serwera) też odcina service workera od sieci, więc test 05 na produkcji jest wiarygodny.
 
@@ -194,6 +216,36 @@ Na granicy, zostawione (decyzja 24):
 Potwierdzone w podstawie bez zastrzeżeń: system rzymski do 3000 (IV–VI I.5), cechy podzielności przez 2, 3, 4, 5, 9, 10, 100 (II.6), NWD i NWW metodą rozkładu (II.11), dzielenie z resztą w postaci a = b · q + r (II.15), wartość bezwzględna (III.3), rozwinięcia dziesiętne nieskończone (IV.10), całość z części (IV.13), kąty wierzchołkowe i przyległe (VIII.6 oraz VII–VIII VIII.1), kąty odpowiadające i naprzemianległe (VII–VIII VIII.3), cechy przystawania (VIII.4), nierówność trójkąta (VIII.5), wzory na pola (IX.2), środek odcinka (X.4), długość okręgu i pole koła (XIV.1, XIV.3). Przykład „23 + 49 + 77” z kompendium liczb pochodzi wprost z warunków realizacji podstawy.
 
 Temat figur ma wersję 2026-11-03, temat liczb też (zadanie `k26` z fazy 1).
+
+## Faza 5: wdrożenie i sprawdzenie na żywo
+
+Push na `main` był możliwy (`63e5371..8d7fb81`), więc nie było przystanku na merge. GitHub Pages zbudował stronę w około 30 sekund.
+
+`curl -I` na produkcji:
+
+| adres | kod | typ |
+|---|---|---|
+| `/nauka/` | 200 | `text/html; charset=utf-8` |
+| `/nauka` | 301 na `/nauka/` | |
+| `/nauka/index.html` | 200 | `text/html; charset=utf-8` |
+| `/nauka/manifest.webmanifest` | 200 | `application/manifest+json; charset=utf-8` |
+| `/nauka/sw.js` | 200 | `application/javascript; charset=utf-8` |
+| `/nauka/tematy/index.json` | 200 | `application/json; charset=utf-8` |
+| `/nauka/tematy/mat-e8-liczby.md` | 200 | `text/markdown; charset=utf-8` |
+| `/nauka/tematy/mat-e8-figury.md` | 200 | `text/markdown; charset=utf-8` |
+| `/nauka/ikony/*.png` (4 pliki) | 200 | `image/png` |
+| `/nauka/.nojekyll` | 200 | |
+
+Wszystkie z `Cache-Control: max-age=600`. Skróty MD5 plików `index.html`, `sw.js`, manifestu, katalogu, obu tematów i ikony 512 są identyczne z repozytorium, więc Jekyll niczego nie przerobił.
+
+Testy na produkcji (`python3 testy/run.py --url https://akku1906.github.io/nauka/`): **4 z 4**.
+
+| test | wynik |
+|---|---|
+| 01 start bez błędów, wybór klasy, oba tematy | przeszedł |
+| 05 offline po jednym starcie bez otwierania tematu (`set_offline`, które, jak sprawdziłem w fazie 3, odcina też service workera) | przeszedł |
+| 08 instalowalność: pusta lista błędów, `beforeinstallprompt`, identyfikator aplikacji `/nauka/` | przeszedł |
+| 09 dziesięć rysunków w temacie figur, żaden znacznik jako tekst | przeszedł |
 
 ## Instrukcja dla rodzica: prawdziwy telefon z Androidem
 
