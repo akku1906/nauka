@@ -5,7 +5,7 @@ przedmiot: Matematyka
 tematyka: Egzamin ósmoklasisty 2027 — wzory, prawa, figury
 klasa: 8
 czas: 30 min
-wersja: 2026-11-01
+wersja: 2026-11-03
 ---
 
 # Kompendium
@@ -77,8 +77,6 @@ $$ a^2 + b^2 = c^2 $$
 
 Przeciwprostokątna $c$ leży naprzeciw kąta prostego i jest najdłuższym bokiem. Popularne trójki: 3, 4, 5; 6, 8, 10; 5, 12, 13.
 
-Działa też w drugą stronę: jeśli $a^2 + b^2 = c^2$, to trójkąt jest prostokątny.
-
 > Szukając przyprostokątnej, odejmujemy: $b^2 = c^2 - a^2$.
 
 ## Trójkąty szczególne
@@ -144,7 +142,7 @@ $$ L = 2πr,   P = πr^2 $$
 </g>
 </svg>
 
-Wycinek koła o kącie α to $\frac{α}{360}$ całego koła. Na przykład kąt 90° daje ćwierć koła.
+Półkole ma połowę pola całego koła, a ćwierć koła jego czwartą część.
 
 > Przybliżenie $π ≈ 3,14$ stosujemy tylko wtedy, gdy zadanie o to prosi. Inaczej zostawiamy wynik z π, na przykład $25π$.
 
@@ -207,18 +205,18 @@ Proste $a$ i $b$ są równoległe. Oblicz kąt β.
 Kąt odpowiadający kątowi 70° przy prostej $b$ też ma 70°. Kąt β jest do niego przyległy, więc $β = 180 - 70 = 110$°.
 
 ## Kąt zewnętrzny [1 pkt] {quiz #g04}
-Ile wynosi kąt zewnętrzny $x$? Rysunek jest poglądowy.
+Ile wynosi kąt zewnętrzny $x$?
 
 <svg viewBox="0 0 300 160" style="width:100%;max-width:300px" xmlns="http://www.w3.org/2000/svg">
 <g stroke="currentColor" fill="none" stroke-width="2">
-<polygon points="30,140 200,140 110,40"/>
+<polygon points="30,140 200,140 152.2,37.5"/>
 <line x1="200" y1="140" x2="290" y2="140"/>
-<path d="M220 140 A20 20 0 0 0 186.6 125.1" stroke-width="1.5"/>
+<path d="M220 140 A20 20 0 0 0 191.5 121.9" stroke-width="1.5"/>
 </g>
 <g fill="currentColor" font-size="16" text-anchor="middle">
-<text x="62" y="132">40°</text>
-<text x="110" y="66">75°</text>
-<text x="222" y="122">x</text>
+<text x="72" y="133">40°</text>
+<text x="143" y="68">75°</text>
+<text x="221" y="118">x</text>
 </g>
 </svg>
 
@@ -298,15 +296,15 @@ Przeciwprostokątna ma 13, a jedna przyprostokątna 5. Ile ma druga przyprostok�
 ### Rozwiązanie
 $b^2 = 13^2 - 5^2 = 169 - 25 = 144$, więc $b = 12$.
 
-## Czy trójkąt jest prostokątny? [1 pkt] {pf #g10}
-Oceń, czy trójkąt o podanych bokach jest prostokątny.
-- [P] 6, 8, 10
-- [F] 4, 5, 6
-- [P] 7, 24, 25
-- [F] 2, 3, 4
+## Pitagoras: prawda czy fałsz [1 pkt] {pf #g26}
+Oceń, czy zdanie o trójkącie prostokątnym jest prawdziwe, czy fałszywe.
+- [P] Przeciwprostokątna jest najdłuższym bokiem.
+- [F] Gdy przyprostokątne mają 5 i 12, przeciwprostokątna ma 17.
+- [P] Gdy przyprostokątne mają 9 i 12, przeciwprostokątna ma 15.
+- [F] Gdy przeciwprostokątna ma 10, a jedna przyprostokątna 6, druga ma 4.
 
 ### Rozwiązanie
-Sprawdzamy, czy suma kwadratów dwóch krótszych boków równa się kwadratowi najdłuższego. $49 + 576 = 625 = 25^2$, ale $16 + 25 = 41$, a $6^2 = 36$.
+Przeciwprostokątna leży naprzeciw kąta prostego i jest najdłuższa. $5^2 + 12^2 = 169 = 13^2$, więc przeciwprostokątna ma 13, a nie $5 + 12$. $9^2 + 12^2 = 81 + 144 = 225 = 15^2$. $10^2 - 6^2 = 64$, więc druga przyprostokątna ma 8, a nie $10 - 6$.
 
 ## Przekątna kwadratu [1 pkt] {quiz #g11}
 Ile wynosi przekątna kwadratu o boku 5?
@@ -330,7 +328,7 @@ Oblicz długość $x$.
 <path d="M30 128 h12 v12" stroke-width="1.5"/>
 </g>
 <g fill="currentColor" font-size="16" text-anchor="middle">
-<text x="190" y="132">30°</text>
+<text x="180" y="135">30°</text>
 <text x="140" y="72">12</text>
 <text x="16" y="88">x</text>
 </g>
@@ -369,18 +367,18 @@ Dopasuj wzór na pole.
 Dzielenie przez 2 mają trójkąt, romb i trapez. Romb liczymy z przekątnych, a trapez z sumy podstaw.
 
 ## Pole trapezu [1 pkt] {luka #g15}
-Oblicz pole trapezu. Rysunek jest poglądowy.
+Oblicz pole trapezu.
 
-<svg viewBox="0 0 300 170" style="width:100%;max-width:300px" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 300 175" style="width:100%;max-width:300px" xmlns="http://www.w3.org/2000/svg">
 <g stroke="currentColor" fill="none" stroke-width="2">
-<polygon points="20,140 280,140 200,50 80,50"/>
-<line x1="80" y1="50" x2="80" y2="140" stroke-dasharray="5 4"/>
-<path d="M80 128 h12 v12" stroke-width="1.5"/>
+<polygon points="20,145 280,145 236,41 80,41"/>
+<line x1="80" y1="41" x2="80" y2="145" stroke-dasharray="5 4"/>
+<path d="M80 133 h12 v12" stroke-width="1.5"/>
 </g>
 <g fill="currentColor" font-size="16" text-anchor="middle">
-<text x="150" y="160">10</text>
-<text x="140" y="42">6</text>
-<text x="70" y="100">4</text>
+<text x="150" y="165">10</text>
+<text x="158" y="33">6</text>
+<text x="68" y="99">4</text>
 </g>
 </svg>
 
@@ -454,11 +452,11 @@ Okrąg ma średnicę 8. Jego obwód to ___[8]π.
 ### Rozwiązanie
 Promień to 4, więc $L = 2π * 4 = 8π$. Krócej: obwód to średnica razy π.
 
-## Wycinek koła [1 pkt] {luka #g23}
-Koło ma promień 6. Pole wycinka o kącie 90° wynosi ___[9]π.
+## Ćwierć koła [1 pkt] {luka #g23}
+Koło o promieniu 6 podzielono dwiema prostopadłymi średnicami na cztery równe części. Pole jednej części wynosi ___[9]π.
 
 ### Rozwiązanie
-Całe koło ma pole $π * 6^2 = 36π$. Kąt 90° to $\frac{90}{360} = \frac{1}{4}$ koła, czyli $9π$.
+Całe koło ma pole $π * 6^2 = 36π$. Jedna z czterech równych części ma pole $36π : 4 = 9π$.
 
 ## Osie symetrii [1 pkt] {pary #g24}
 Dopasuj liczbę osi symetrii.

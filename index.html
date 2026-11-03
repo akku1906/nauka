@@ -79,8 +79,9 @@ ul.why{margin:.4em 0;padding-left:1.2em}
 .bad{border-color:var(--red)!important;box-shadow:inset 4px 0 0 var(--red)}
 .opt.bad{text-decoration:line-through;text-decoration-color:var(--red)}
 .pf{display:flex;flex-direction:column;gap:10px}
-.pf .row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px}
-.pf .row>div{display:flex;gap:6px;flex-shrink:0}
+.pf .row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 10px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px}
+.pf .row>span{flex:1 1 11em;min-width:0}
+.pf .row>div{display:flex;gap:6px;flex-shrink:0;margin-left:auto}
 .pf button{border:1.5px solid var(--line);background:transparent;border-radius:6px;padding:8px 10px;min-height:44px;min-width:64px;font-size:15px}
 .gap{font:inherit;font-size:18px;color:inherit;background:var(--card);border:1.5px solid var(--line);border-bottom:2px solid var(--ink);padding:4px 6px;min-height:44px;min-width:4.2em;max-width:100%;text-align:center;border-radius:6px;vertical-align:middle;margin:2px 0}
 .gap.good{border-bottom-color:var(--green);box-shadow:none;color:var(--green)}
@@ -531,7 +532,7 @@ const mastered=(x,temat=CUR)=>{const s=Z.items[itemKey(temat,x.id)];return s&&s.
 function postepTematu(p){const all=[...checkable(p),...p.cards];return {done:all.filter(x=>mastered(x,p.id)).length,all:all.length};}
 
 /* ============ trwałość, wersja, aktualizacje ============ */
-const WERSJA='2026-11-03.8f20931c';
+const WERSJA='2026-11-03.dd160a97';
 let TRWALA=null;
 async function trwalosc(){
   if(!(navigator.storage&&navigator.storage.persist)){TRWALA='brak';odswiezStatus();return;}

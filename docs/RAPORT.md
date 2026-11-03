@@ -147,6 +147,54 @@ Test 14 złapał błąd, który wprowadziłem w fazie 1: sprawdzanie znaczników
 
 **Czego nie da się sprawdzić w emulacji**: czy prawdziwa klawiatura Androida przy `inputmode="text"` i `"decimal"` wygląda tak, jak zakładam (test sprawdza tylko atrybut); jak wygląda ikona na ekranie głównym i okno instalacji; czy Chrome na telefonie przyzna pamięć trwałą (w emulacji `persist()` zwraca `false`); fizyczny przycisk wstecz (emulowany przez historię przeglądarki); systemowy wybór pliku `.md` i `.json` na Androidzie; gdzie trafia pobrany plik postępu w trybie zainstalowanym; tryb samolotowy zamiast emulowanego braku sieci; tryb ciemny. To wszystko jest w instrukcji dla rodzica na końcu.
 
+## Faza 4: audyt treści
+
+### Parser i identyfikatory
+
+Zero ostrzeżeń parsera w obu tematach (test 16). Identyfikatory unikalne w obrębie tematu (test statyczny i test 11).
+
+### Przeliczenie odpowiedzi
+
+Każdą odpowiedź liczbową z luk i quizów, każde zdanie P/F z liczbami i każdą parę z liczbami przeliczyłem niezależnie w Pythonie: `testy/test_tresc.py`. Obliczenia są tam zapisane wprost (np. `20 - F(12, 4) * 3 == 11`, `math.gcd(72, 60) == 12`, `rozwiniecie(1, 6) == '0,1(6)'`) i są częścią `testy/run.py`, więc późniejsza zmiana odpowiedzi bez zmiany obliczenia nie przejdzie. Sprawdziłem też dystraktory z wyjaśnieniami (np. w `k01`: `20 − 12 : 12 = 19`, `8 : 4 · 3 = 6`, `17 · 3 = 51`). Cechy podzielności z `k05` sprawdziłem na wszystkich liczbach od 1 do 9999, a zapisy rzymskie z `k24` przez konwersję w obie strony.
+
+Wynik: **wszystkie odpowiedzi w obu tematach są poprawne.** Żadna liczba nie wymagała zmiany. Test na pewno nie jest pusty: podmiana `___[2700]` na `___[2800]` w `k21` daje błąd.
+
+### Rysunki
+
+Współrzędne SVG zmierzyłem skryptem (kąty z iloczynu skalarnego, długości w jednej skali), a potem obejrzałem zrzuty.
+
+| zadanie | co sprawdziłem | stan zastany | co zrobiłem |
+|---|---|---|---|
+| `g03` | sieczna 69,8° (dane: 70°), łuk „70°” przy prostej *a* między prawą półprostą a sieczną w górę, łuk β przy *b* między lewą półprostą a sieczną w górę, więc β = 180° − 70° | zgodny | bez zmian |
+| `g04` | kąty trójkąta i kąt zewnętrzny | **przeczył danym**: narysowane 51°, 48°, 81° przy opisanych 40°, 65°, 75°, kąt przy B wyglądał na mniejszy od kąta 40°, a kąt zewnętrzny na 132° zamiast 115° | wierzchołek przeniesiony do (152,2; 37,5): kąty 40,0°, 65,0°, 75,0°, łuk kąta zewnętrznego 115°, napisy przy swoich wierzchołkach. Zdanie „Rysunek jest poglądowy” usunięte, bo rysunek jest teraz w skali |
+| `g07` | podstawa 10, wysokość 6, bok 8 | zgodny co do 0,1% (bok 8,006) | bez zmian |
+| `g12` | kąt 29,9° naprzeciw *x*, przeciwprostokątna 2,006 raza dłuższa od *x*, kąt prosty w dobrym wierzchołku | zgodny, ale „30°” nachodził znakiem stopnia na przeciwprostokątną | napis przesunięty, test mierzy odstęp |
+| `g15` | podstawy 10 i 6, wysokość 4 | trzy różne skale (26, 20 i 22,5 px na jednostkę) | trapez narysowany w jednej skali 26 px. „Rysunek jest poglądowy” usunięte |
+
+Te pomiary też są w `testy/test_tresc.py`. Na starej wersji pliku test pada na `g04`.
+
+Rysunki w kompendium (kąty, pole trójkąta, Pitagoras, trapez, koło) mają oznaczenia ogólne (α, β, a, b, h, r) i sprawdziłem je wzrokowo: α stoją w kątach ostrych, β w rozwartych, kąt prosty jest tam, gdzie ma być.
+
+### Zgodność z podstawą programową
+
+Źródło: tekst rozporządzenia MEN z 28 czerwca 2024 r. (Dz.U. 2024 poz. 996), część „Matematyka”, pobrany z dziennikustaw.gov.pl, oraz informator CKE „o egzaminie ósmoklasisty z matematyki od roku szkolnego 2024/2025”, który mówi, że egzamin sprawdza wymagania tej podstawy. Nowa podstawa od 1 września 2026 r. obejmuje na razie klasę 4, więc kl. 8 w roku 2026/2027 uczy się według podstawy z 2024 r. (to wiem z jednego źródła wtórnego, IBE, i nie sprawdziłem w rozporządzeniu).
+
+Błędy merytoryczne względem podstawy, poprawione:
+
+1. **Twierdzenie odwrotne do twierdzenia Pitagorasa.** Podstawa, kl. VII–VIII, VIII.7: „zna i stosuje w sytuacjach praktycznych twierdzenie Pitagorasa (bez twierdzenia odwrotnego)”. Kompendium figur miało zdanie „Działa też w drugą stronę…”, a zadanie `g10` („Czy trójkąt jest prostokątny?”) w całości opierało się na twierdzeniu odwrotnym. Zdanie usunąłem, `g10` zastąpiłem zadaniem `g26` „Pitagoras: prawda czy fałsz” (przeciwprostokątna najdłuższa; 5 i 12 dają 13, nie 17; 9 i 12 dają 15; przy 10 i 6 druga przyprostokątna to 8, nie 4). Nowy identyfikator, bo to inne zadanie i stary postęp by do niego nie pasował.
+2. **Wycinek koła.** Dział XIV „Długość okręgu i pole koła” obejmuje tylko długość okręgu, pole koła i odwrotne zadania (promień z długości lub pola). Ogólny wzór „wycinek o kącie α to α/360 koła” to materiał liceum. Kompendium mówi teraz o półkolu i ćwierci koła, a `g23` pyta o pole jednej z czterech części koła podzielonego dwiema prostopadłymi średnicami. Odpowiedź (9π) i identyfikator zostały.
+
+Na granicy, zostawione (decyzja 24):
+
+- `g17` i tabela jednostek pola: podstawa IV–VI, XI.4 „stosuje jednostki pola: mm², cm², dm², m², km², ar, hektar (bez zamiany jednostek w trakcie obliczeń)”. Zostawiłem, bo XI.3 każe liczyć pola „dla danych wymagających zamiany jednostek”, a 1 m² = 10 000 cm² to dokładnie ta pułapka.
+- `g19`, `g20` i kompendium „Wielokąty”: podstawa VII–VIII IX.1 mówi tylko „zna pojęcie wielokąta foremnego”, ale IV–VI XI.1 każe obliczać miary kątów z własności wielokątów, a szkolne wymagania dla kl. 8 (podręcznikowe, nie podstawa) zawierają kąty wielokątów foremnych.
+- `g04` kąt zewnętrzny i `g12` trójkąt 30°, 60°, 90°: nie ma ich wprost w podstawie, ale wynikają z sumy kątów, kątów przyległych i twierdzenia Pitagorasa, a przykład z podstawy (XI.2) sam używa trójkąta o kątach 45°, 45°, 90°.
+- Środek symetrii (kompendium, `g24`): dział XV „Symetrie” podstawa pozwala zrealizować po egzaminie. Osie symetrii są też w IV–VI (IX.5), więc `g24` zostaje.
+
+Potwierdzone w podstawie bez zastrzeżeń: system rzymski do 3000 (IV–VI I.5), cechy podzielności przez 2, 3, 4, 5, 9, 10, 100 (II.6), NWD i NWW metodą rozkładu (II.11), dzielenie z resztą w postaci a = b · q + r (II.15), wartość bezwzględna (III.3), rozwinięcia dziesiętne nieskończone (IV.10), całość z części (IV.13), kąty wierzchołkowe i przyległe (VIII.6 oraz VII–VIII VIII.1), kąty odpowiadające i naprzemianległe (VII–VIII VIII.3), cechy przystawania (VIII.4), nierówność trójkąta (VIII.5), wzory na pola (IX.2), środek odcinka (X.4), długość okręgu i pole koła (XIV.1, XIV.3). Przykład „23 + 49 + 77” z kompendium liczb pochodzi wprost z warunków realizacji podstawy.
+
+Temat figur ma wersję 2026-11-03, temat liczb też (zadanie `k26` z fazy 1).
+
 ## Decyzje
 
 1. **Źródło prawdy dla silnika: `silnik.html`.** Dlaczego: jest identyczny z `aplikacja.html` po zbudowaniu, więc wybór nie ma skutków. Alternatywa: wyodrębnienie z `aplikacja.html`, która dałaby ten sam wynik.
@@ -171,6 +219,13 @@ Test 14 złapał błąd, który wprowadziłem w fazie 1: sprawdzanie znaczników
 18. **Testy w pełnym Chromium (`channel="chromium"`)**, a nie w domyślnym „headless shell”. Dlaczego: tylko pełne Chromium ocenia instalowalność, a przy okazji jest bliżej Chrome z telefonu. `run.py` wraca do domyślnej przeglądarki, gdyby pełnej nie było.
 19. **Własny prosty program uruchamiający testy** zamiast pytest. Dlaczego: na komputerze rodzica wystarczy Python i Playwright. Alternatywa: pytest, wygodniejszy w raportach, ale jako dodatkowa zależność.
 20. **Testy znajdują elementy po atrybutach `data-*`** (`data-k`, `data-temat`, `data-w`, `data-akcja`) i biorą poprawne odpowiedzi z tematu sparsowanego przez samą aplikację (`window.nauka`). Dlaczego: odpowiedzi są tasowane, a testy nie mogą zależeć od kolejności ani od kopii parsera w Pythonie. Alternatywa: osobny parser w Pythonie, który mógłby rozjechać się z silnikiem.
+
+21. **`g10` usunięte, nowe `g26`.** Dlaczego: zadanie uczyło treści wyłączonej z podstawy, a wymiana treści pod tym samym identyfikatorem zostawiłaby uczennicy postęp za inne zadanie. Alternatywa: zostawić z dopiskiem „poza egzaminem”, ale to szum w krótkim temacie powtórkowym.
+22. **`g23` ten sam identyfikator mimo nowego brzmienia.** Dlaczego: liczy dokładnie to samo (ćwierć koła o promieniu 6, 9π), zmienił się tylko opis, więc postęp nadal ma sens.
+23. **Rysunki `g04` i `g15` przerysowane w skali, bez dopisku „Rysunek jest poglądowy”.** Dlaczego: dopisek nie usprawiedliwia rysunku, na którym kąt 65° wygląda na mniejszy niż kąt 40°, a dla ósmoklasistki rysunek w skali jest dodatkową kontrolą wyniku. Alternatywa: zostawić rysunek i dopisek, jak w części arkuszy CKE.
+24. **Treści na granicy podstawy zostawione** (jednostki pola, kąty wielokątów foremnych, kąt zewnętrzny, trójkąt 30°, 60°, 90°, środek symetrii). Dlaczego: każda wynika z wymagań podstawy albo jest w szkolnych wymaganiach dla kl. 8, a usunięcie zubożyłoby powtórkę. Usuwałem tylko to, co podstawa wyłącza wprost albo czego nie ma w odpowiednim dziale.
+25. **Audyt treści jako stały test** (`testy/test_tresc.py`), a nie jednorazowy rachunek w raporcie. Dlaczego: treść będzie się zmieniać, a test pilnuje odpowiedzi i proporcji rysunków przy każdej zmianie. Koszt: przy zmianie zadania trzeba poprawić też oczekiwany wynik w teście.
+26. **Wiersz Prawda/Fałsz może zawinąć przyciski pod zdanie.** Dlaczego: przy 360 px długie słowo („przeciwprostokątna”) i dwa przyciski 64 px nie mieszczą się w jednej linii, a strona robiła się szersza od ekranu (wykrył to test 12 na nowym `g26`).
 
 ## Ściany
 

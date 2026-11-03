@@ -17,6 +17,7 @@ sys.dont_write_bytecode = True
 
 import test_aplikacja  # noqa: E402
 import test_statyczne  # noqa: E402
+import test_tresc  # noqa: E402
 
 
 def testy(modul):
@@ -43,9 +44,10 @@ def main():
 
     if not a.url:
         print('Testy statyczne')
-        for n, fn in testy(test_statyczne):
-            if a.k in n:
-                uruchom(n, fn)
+        for modul in (test_statyczne, test_tresc):
+            for n, fn in testy(modul):
+                if a.k in n:
+                    uruchom(n, fn)
 
     from playwright.sync_api import sync_playwright
     print('Testy w przeglądarce' + (f' na {a.url}' if a.url else ''))
