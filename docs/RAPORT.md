@@ -85,6 +85,34 @@ Metoda: zbudowałem wersję jednoplikową z oboma tematami i przeszedłem ją w 
 
 `testy/run.py` jeszcze nie istniał, więc zmiany w tej fazie sprawdzałem skryptami doraźnymi (pomiary jak wyżej, migracja ze starego zapisu, sanityzacja złośliwego SVG, wpisywanie `-4`, `2.5`, `−2,5`). Pełny zestaw testów powstaje w fazie 3.
 
+## Faza 2: struktura repozytorium i PWA
+
+Układ jest taki jak w zadaniu. `silnik.html` przeniosłem do `index.html` (`git mv`, historia zostaje), `zbuduj.py` do `narzedzia/`, tematy do `tematy/`. `aplikacja.html` usunąłem, bo była identyczna z tym, co buduje skrypt, i jest w historii gita.
+
+**Silnik w działaniu** (`index.html`):
+
+- Przy starcie pobiera `tematy/index.json`, a potem wszystkie wymienione tam pliki `.md`, i parsuje je w przeglądarce. Temat, którego nie udało się pobrać, jest na liście jako „niedostępny bez internetu”.
+- Przy pierwszym uruchomieniu pyta o klasę (8 albo 4). Zmiana w „Ustawieniach”. Kl. 4 widzi „Tematy wkrótce”, bo w katalogu nie ma jej tematów.
+- Ekrany mają adresy po `#` (`#/t/mat-e8-figury/kompendium`, `#/ustawienia`), a każde przejście dokłada wpis historii. Systemowy przycisk wstecz cofa więc o jeden ekran, zamiast zamykać aplikację (znalezisko A8). Spis treści kompendium przewija stronę przyciskami, a nie linkami `#r1`, które kolidowałyby z adresami ekranów. Adres `#/t/<temat>/zadanie/<id>` otwiera jedno zadanie (przydaje się w testach i kiedyś w kodzie QR na wydruku).
+- „Dodaj temat z pliku” zostaje. Temat z pliku leży w `nauka:_plik:<id>`, ma na liście znaczek „z pliku” i jest widoczny w każdej klasie. Można go usunąć w ustawieniach, postęp zostaje.
+- Pasek stanu: „Zapis postępu działa. To uruchomienie nr N, pierwsze D. Pamięć trwała: tak/nie. Wersja RRRR-MM-DD.skrót.” Przy starcie aplikacja woła `navigator.storage.persisted()`, a jeśli zwróci `false`, to `persist()`.
+- Eksport zapisuje `nauka-postep-RRRR-MM-DD.json` w formacie 2 (opis w `docs/FORMAT.md`), razem z tematami z pliku. Import (stopka i ustawienia, a w ustawieniach także wklejenie tekstu) rozpoznaje format 2, stary eksport `{eksport, stan:{items, launches, first}}` i surowy stan `nauka:v1`, pokazuje podsumowanie i pyta „Połącz” albo „Zastąp”.
+- Wersja jednoplikowa (`python3 narzedzia/zbuduj.py wynik.html`) ma te same funkcje poza katalogiem i service workerem. Skrypt podmienia `const TRYB='siec'` na `'plik'` i wycina odnośniki do manifestu i ikon, których z pliku nie da się wczytać.
+
+**Service worker** (`sw.js`):
+
+- Instalacja zapisuje powłokę (`index.html`, manifest, cztery ikony) z pominięciem pamięci HTTP (`cache:'reload'`) i od razu pobiera katalog oraz wszystkie tematy.
+- Nawigacja do `./` i `./index.html` dostaje powłokę z pamięci. Inne pliki pod `/nauka/` (np. `docs/RAPORT.md`) idą do sieci.
+- `tematy/index.json` i `tematy/*.md`: najpierw sieć z rewalidacją (`cache:'no-cache'`, więc 10-minutowa pamięć HTTP Pages nie opóźnia nowych tematów), odpowiedź trafia do pamięci `nauka-tematy`. Bez sieci albo gdy sieć nie odpowie w 4 sekundy, temat przychodzi z pamięci, a pobieranie trwa dalej w tle. Każde pobranie katalogu z sieci uruchamia pobranie wszystkich tematów z katalogu, także tych, których uczennica nie otwierała.
+- Pamięć powłoki ma wersję w nazwie (`nauka-powloka-<WERSJA>`). Nowy `sw.js` instaluje się w tle i czeka. Aplikacja pokazuje wtedy na dole pasek „Jest nowa wersja, odśwież.” z przyciskiem. Dopiero stuknięcie aktywuje nową wersję i przeładowuje stronę. Zamknięcie i ponowne otwarcie aplikacji też ją aktywuje. Stare pamięci powłoki są kasowane przy aktywacji.
+- `WERSJA` w `sw.js` i `index.html` ustawia `narzedzia/wersja.py`: data i skrót SHA-256 plików powłoki. Test sprawdza, że skrót zgadza się z plikami, więc zmiana `index.html` bez nowej wersji nie przejdzie testów.
+
+**Manifest**: `name` i `short_name` „Nauka”, `id`, `start_url` i `scope` równe `./`, `display: standalone`, `lang: pl`, ikony 192 i 512 (`any`) oraz 192 i 512 (`maskable`). Ikony rysuje `narzedzia/ikony.py`: kartka w kratkę z marginesem, żółtym zakreśleniem i zielonym ptaszkiem na granatowym tle, bez tekstu. W wersji maskable kartka mieści się w bezpiecznym kole.
+
+**Narzędzia**: `narzedzia/katalog.py` (katalog z frontmatterów), `narzedzia/wersja.py` (wersja powłoki), `narzedzia/ikony.py`, `narzedzia/zbuduj.py`, `testy/serwer.py` (serwer jak Pages pod `/nauka/`, z `Cache-Control: max-age=600`).
+
+Sprawdzone w tej fazie próbą dymną (pełne testy w fazie 3): wybór klasy, lista z oboma tematami, przejście wstecz o ekran, aktywny service worker i obie pamięci podręczne z kompletem plików, wersja jednoplikowa z pliku, import starego eksportu i eksport w nowym formacie. Zero błędów konsoli.
+
 ## Decyzje
 
 1. **Źródło prawdy dla silnika: `silnik.html`.** Dlaczego: jest identyczny z `aplikacja.html` po zbudowaniu, więc wybór nie ma skutków. Alternatywa: wyodrębnienie z `aplikacja.html`, która dałaby ten sam wynik.
@@ -96,6 +124,14 @@ Metoda: zbudowałem wersję jednoplikową z oboma tematami i przeszedłem ją w 
 7. **Liczby w lukach porównywane jako liczby**, ułamki zwykłe dosłownie. `0,50` = `0,5`, ale `22/24` ≠ `11/12`. Dlaczego: zero na końcu ułamka dziesiętnego nie zmienia odpowiedzi, a przy ułamkach zwykłych skracanie bywa częścią zadania. Alternatywa: porównanie wartości ułamków, które przyjęłoby też nieskrócone wyniki.
 8. **Nowe zadanie `k26` „Liczby ujemne”** w temacie liczb (wersja tematu 2026-11-03). Dlaczego: kompendium uczy znaków, a żadne zadanie nie wymagało wpisania liczby ujemnej, więc ani uczennica tego nie ćwiczyła, ani test nie mógł sprawdzić minusa. Alternatywa: osobny temat testowy tylko w `testy/`, który sprawdziłby mechanizm, ale nie prawdziwą treść.
 9. **Znak pierwiastka jako maska CSS**, a nie element `<svg>`. Dlaczego: rysunek rozciąga się do wysokości argumentu niezależnie od fontu, a liczba elementów `<svg>` na stronie nadal odpowiada liczbie rysunków z tematu (test 9). Alternatywa: inline SVG w każdym pierwiastku albo sam glif √ z ręcznie dobranym przesunięciem, zależnym od fontu.
+
+10. **Tematy z katalogu wczytywane wszystkie przy starcie**, a nie dopiero przy otwarciu. Dlaczego: lista pokazuje postęp „opanowane X z Y”, do którego trzeba sparsować temat, a pliki mają po kilkanaście kilobajtów. Alternatywa: postęp liczony z samego katalogu, co wymagałoby dopisywania liczby zadań do `index.json`.
+11. **Nawigacja tematów z pamięci po 4 sekundach bez odpowiedzi sieci.** Dlaczego: „najpierw sieć” na słabym zasięgu oznacza czekanie na limit czasu przeglądarki, nawet minutę. Po 4 s uczennica dostaje temat z pamięci, a nowa wersja wchodzi przy następnym starcie. Alternatywa: czysta „najpierw sieć”, zgodna z literą zadania, ale z długim startem w autobusie.
+12. **Powłoka „najpierw pamięć”, nowa wersja tylko przez nowy `sw.js`.** Dlaczego: start bez sieci jest natychmiastowy, a aktualizacja nie przerywa zadania. Alternatywa: `index.html` „najpierw sieć”, która dawałaby nowy silnik od razu, ale mogła go podmienić w połowie pracy i spowalniała start.
+13. **Wersja powłoki jako skrót plików**, ustawiany skryptem i pilnowany testem. Dlaczego: zapomniana zmiana wersji to najczęstszy błąd PWA, po którym nikt nie dostaje poprawki. Alternatywa: ręczny numer wersji.
+14. **Temat z pliku widoczny w każdej klasie i wygrywa tylko nowszą wersją.** Dlaczego: skoro ktoś go świadomie wgrał, nie powinien zniknąć przez filtr klasy. Przy tej samej wersji co w katalogu zostaje wersja z katalogu, bo ta jest aktualizowana. Aplikacja mówi to wprost po wgraniu pliku. Alternatywa: plik zawsze wygrywa, ale wtedy stary plik blokowałby poprawki z sieci.
+15. **Import: „Połącz” bierze nowszy wpis** (po czasie ostatniej odpowiedzi), licznik uruchomień jako większy z dwóch, datę pierwszego jako wcześniejszą. **„Zastąp”** przyjmuje stan z pliku w całości, z licznikiem i ustawieniami. Bez dodatkowego `confirm`, bo wybór jest już na osobnym ekranie z opisem skutków. Alternatywa: sumowanie liczników podejść, które dublowałoby wpisy przy dwukrotnym imporcie tego samego pliku.
+16. **Usunięcie `aplikacja.html` z repozytorium.** Dlaczego: to wynik budowania, identyczny ze źródłem, i leżałby pod adresem Pages jako druga, nieaktualna aplikacja. Alternatywa: zostawić jako archiwum, ale historia gita już nim jest.
 
 ## Ściany
 

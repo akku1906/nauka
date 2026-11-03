@@ -3,8 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#FAFBF7">
+<meta name="theme-color" content="#FAFBF7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14181E" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Kompendium, zadania i fiszki do nauki. Działa bez internetu.">
 <title>Nauka</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="ikony/ikona-192.png">
+<link rel="apple-touch-icon" href="ikony/ikona-192.png">
+<!-- /PWA -->
 <style>
 :root{
   --paper:#FAFBF7; --grid:#E3E9EF; --margin:#EBB0AE;
@@ -103,7 +110,6 @@ summary{cursor:pointer;color:var(--muted);padding:10px 0;min-height:44px}
 .card .front{font-size:24px;font-family:"Noto Serif",Georgia,serif}
 .card .backside{font-size:19px;border-top:1px solid var(--line);padding-top:14px}
 .toc{display:flex;flex-wrap:wrap;gap:0 14px;margin:8px 0 4px;font-size:15px}
-.toc a{color:var(--muted);display:inline-block;padding:10px 0;min-height:44px}
 .doc table,.task table{border-collapse:collapse;margin:10px 0;font-size:16px}
 .doc th,.doc td,.task th,.task td{border:1px solid var(--line);padding:5px 9px;text-align:left}
 .tablewrap{overflow-x:auto}
@@ -129,6 +135,23 @@ summary{cursor:pointer;color:var(--muted);padding:10px 0;min-height:44px}
 .warn{border-left:3px solid var(--red);padding:8px 12px;background:var(--card);font-size:14px;margin-top:14px}
 textarea{width:100%;min-height:160px;font:13px monospace;color:inherit;background:var(--card);border:1px solid var(--line)}
 select{font:inherit;font-size:16px;padding:6px;min-height:44px;max-width:100%;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:6px;margin:6px 0 0}
+.note{border-left:3px solid var(--marker);background:var(--card);padding:10px 12px;margin:0 0 14px;font-size:15px}
+.empty{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 16px;margin:10px 0 16px}
+.menu button.topic{align-items:center}
+.topic .t{display:block}
+.topic small{display:block;color:var(--muted);font-size:14px}
+.badge{display:inline-block;border:1px solid var(--muted);border-radius:10px;padding:0 7px;font-size:12px;line-height:18px}
+.seg{display:flex;gap:10px;flex-wrap:wrap}
+.seg button{min-height:44px;min-width:110px;border:1.5px solid var(--line);background:transparent;border-radius:8px;padding:8px 16px;font-size:17px}
+.seg button.sel{background:var(--marker);color:var(--markerInk);border-color:var(--marker)}
+.filerow{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:6px 0}
+.filerow small{display:block;color:var(--muted);font-size:13px}
+.btn.small{padding:8px 16px;min-height:44px;font-size:15px}
+.toclink{background:none;border:0;padding:10px 0;min-height:44px;color:var(--muted);text-decoration:underline;font-size:15px;text-align:left}
+.update{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--ink);color:var(--paper);font-size:16px;z-index:10}
+.update[hidden]{display:none}
+.update .btn{background:var(--paper);color:var(--ink)}
+body.z-paskiem main{padding-bottom:120px}
 @media (prefers-reduced-motion: no-preference){
   .verdict{animation:in .18s ease-out}
   @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -137,7 +160,9 @@ select{font:inherit;font-size:16px;padding:6px;min-height:44px;max-width:100%;co
 </head>
 <body>
 <main id="app"></main>
+<div id="aktualizacja" class="update" role="status" hidden><span>Jest nowa wersja, odśwież.</span><button type="button" class="btn">Odśwież</button></div>
 <input type="file" id="plik" accept=".md,text/markdown,text/plain" hidden>
+<input type="file" id="plik-postep" accept=".json,application/json,text/plain" hidden>
 <!-- PACZKI -->
 <script>
 "use strict";
@@ -419,15 +444,81 @@ function wczytaj(){
 wczytaj();
 Z.licznik.uruchomienia=(+Z.licznik.uruchomienia||0)+1;Z.licznik.pierwsze=Z.licznik.pierwsze||new Date().toISOString();zapiszLicznik();
 
-/* ============ pakiety ============ */
-let PKGS={};let CUR=null;
-function loadPackages(){
-  PKGS={};
-  const add=(src,origin)=>{const p=parsePackage(src);p.origin=origin;const old=PKGS[p.id];if(!old||(p.meta.wersja||'')>(old.meta.wersja||''))PKGS[p.id]=p;};
-  document.querySelectorAll('script.paczka').forEach(s=>add(s.textContent.replace(/<\\\/script/g,'</script'),'wbudowany'));
-  for(const id in Z.pliki)add(Z.pliki[id],'z pliku');
-  CUR=PKGS[Z.ustaw.ostatni]?Z.ustaw.ostatni:(Object.keys(PKGS)[0]||null);
+/* ============ import i eksport postępu ============ */
+// Format 2: {format:"nauka-postep", wersja:2, eksport, licznik, ustawienia, postep:{"temat:id":wpis}, tematyZPliku:{id:tekst}}.
+// Przyjmujemy też stary eksport wersji jednoplikowej {eksport, stan:{items, launches, first}} i surowy stan nauka:v1.
+function stanDoEksportu(){return {format:'nauka-postep',wersja:2,eksport:new Date().toISOString(),licznik:Z.licznik,ustawienia:Z.ustaw,postep:Z.items,tematyZPliku:Z.pliki};}
+const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
+function odczytajPostep(text){
+  let o;try{o=JSON.parse(String(text).replace(/^﻿/,''));}catch(e){return null;}
+  if(!isObj(o))return null;
+  if(o.format==='nauka-postep'&&isObj(o.postep)){
+    const items={};for(const k in o.postep)if(k.indexOf(':')>0&&isObj(o.postep[k]))items[k]=o.postep[k];
+    const pliki={};if(isObj(o.tematyZPliku))for(const id in o.tematyZPliku)if(typeof o.tematyZPliku[id]==='string')pliki[id]=o.tematyZPliku[id];
+    return {zrodlo:'format '+(o.wersja||'?'),eksport:o.eksport||null,items,pliki,
+      licznik:isObj(o.licznik)?{uruchomienia:+o.licznik.uruchomienia||0,pierwsze:o.licznik.pierwsze||null}:null,
+      ustaw:isObj(o.ustawienia)?o.ustawienia:null};
+  }
+  const stan=isObj(o.stan)?o.stan:(isObj(o.items)?o:null);
+  if(stan&&isObj(stan.items)){const z=zV1(stan);return {zrodlo:'stary format z wersji jednoplikowej',eksport:o.eksport||null,items:z.items,pliki:z.pliki,licznik:z.licznik,ustaw:null};}
+  return null;
 }
+function wpiszPostep(imp,tryb){
+  if(tryb==='zastap'){
+    for(const k in Z.items){delete Z.items[k];lsDel(PFX+k);}
+    for(const id in Z.pliki){delete Z.pliki[id];lsDel(K_PLIK+id);}
+    for(const k in imp.items){Z.items[k]=imp.items[k];zapiszWpis(k);}
+    for(const id in imp.pliki){Z.pliki[id]=imp.pliki[id];zapiszPlik(id);}
+    if(imp.licznik)Z.licznik={uruchomienia:imp.licznik.uruchomienia,pierwsze:imp.licznik.pierwsze};
+    if(imp.ustaw)Z.ustaw=Object.assign({},imp.ustaw);
+  }else{
+    for(const k in imp.items){const a=Z.items[k],b=imp.items[k];if(!a||(+b.t||0)>(+a.t||0)){Z.items[k]=b;zapiszWpis(k);}}
+    for(const id in imp.pliki){
+      if(Z.pliki[id]==null||(parsePackage(imp.pliki[id]).meta.wersja||'')>(parsePackage(Z.pliki[id]).meta.wersja||'')){Z.pliki[id]=imp.pliki[id];zapiszPlik(id);}
+    }
+    if(imp.licznik){
+      Z.licznik.uruchomienia=Math.max(+Z.licznik.uruchomienia||0,imp.licznik.uruchomienia);
+      const p=[Z.licznik.pierwsze,imp.licznik.pierwsze].filter(Boolean).sort();Z.licznik.pierwsze=p[0]||Z.licznik.pierwsze;
+    }
+    if(imp.ustaw)for(const k in imp.ustaw)if(!(k in Z.ustaw))Z.ustaw[k]=imp.ustaw[k];
+  }
+  zapiszLicznik();zapiszUstaw();
+}
+
+/* ============ tematy: wbudowane, z katalogu, z pliku ============ */
+const TRYB='siec'; // narzedzia/zbuduj.py podmienia na 'plik' w wersji jednoplikowej
+const ONLINE_MODE=TRYB==='siec'&&/^https?:$/.test(location.protocol);
+let PKGS={},KAT=[],NIEDOSTEPNE={},KAT_BLAD=false,CUR=null;
+const ORIGIN_RANK={wbudowany:0,katalog:0,'z pliku':1};
+let ORD=0;
+function dodajTemat(src,origin,wpis){
+  const p=parsePackage(src);p.origin=origin;p.wpis=wpis||null;p.ord=ORD++;
+  if(wpis&&wpis.id!==p.id)p.warn.push('Identyfikator w katalogu ('+wpis.id+') różni się od pola „id” w pliku ('+p.id+').');
+  const old=PKGS[p.id];
+  // przy tej samej wersji zostaje temat wbudowany lub z katalogu, plik musi być nowszy
+  if(!old||(p.meta.wersja||'')>(old.meta.wersja||'')||((p.meta.wersja||'')===(old.meta.wersja||'')&&ORIGIN_RANK[origin]<ORIGIN_RANK[old.origin]))PKGS[p.id]=p;
+  return p;
+}
+let SIEC_PKGS={};
+function zbudujListe(){
+  PKGS={};
+  document.querySelectorAll('script.paczka').forEach(s=>dodajTemat(s.textContent.replace(/<\\\/script/g,'</script'),'wbudowany'));
+  for(const id in SIEC_PKGS)dodajTemat(SIEC_PKGS[id].src,'katalog',SIEC_PKGS[id].wpis);
+  for(const id in Z.pliki)dodajTemat(Z.pliki[id],'z pliku');
+}
+async function zaladujKatalog(){
+  if(!ONLINE_MODE)return;
+  try{
+    const r=await fetch('tematy/index.json',{cache:'no-cache'});if(!r.ok)throw new Error(r.status);
+    const kat=await r.json();KAT=Array.isArray(kat.tematy)?kat.tematy.filter(t=>isObj(t)&&t.id&&t.plik):[];
+  }catch(e){KAT=[];KAT_BLAD=true;return;}
+  await Promise.all(KAT.map(async t=>{
+    try{const r=await fetch('tematy/'+t.plik,{cache:'no-cache'});if(!r.ok)throw new Error(r.status);SIEC_PKGS[t.id]={src:await r.text(),wpis:t};delete NIEDOSTEPNE[t.id];}
+    catch(e){NIEDOSTEPNE[t.id]=t;}
+  }));
+}
+const klasa=()=>Z.ustaw.klasa||null;
+const dlaKlasy=p=>p.origin==='z pliku'||!p.meta.klasa||String(p.meta.klasa)===klasa();
 const P=()=>PKGS[CUR];
 const key=id=>itemKey(CUR,id);
 const st=id=>Z.items[key(id)]||null;
@@ -435,8 +526,34 @@ function record(id,ok){
   const k=key(id);const s=Z.items[k]||{n:0,ok:0,box:0,last:null,t:0};
   s.n++;if(ok)s.ok++;s.box=ok?Math.min(5,s.box+1):0;s.last=ok?1:0;s.t=Date.now();Z.items[k]=s;zapiszWpis(k);
 }
-const checkable=()=>P().tasks.filter(t=>CHECKABLE.includes(t.typ));
-const mastered=x=>{const s=st(x.id);return s&&s.box>=2;};
+const checkable=(p=P())=>p.tasks.filter(t=>CHECKABLE.includes(t.typ));
+const mastered=(x,temat=CUR)=>{const s=Z.items[itemKey(temat,x.id)];return s&&s.box>=2;};
+function postepTematu(p){const all=[...checkable(p),...p.cards];return {done:all.filter(x=>mastered(x,p.id)).length,all:all.length};}
+
+/* ============ trwałość, wersja, aktualizacje ============ */
+const WERSJA='2026-11-03.b658f558';
+let TRWALA=null;
+async function trwalosc(){
+  if(!(navigator.storage&&navigator.storage.persist)){TRWALA='brak';odswiezStatus();return;}
+  try{TRWALA=await navigator.storage.persisted();if(!TRWALA)TRWALA=await navigator.storage.persist();}catch(e){TRWALA='brak';}
+  odswiezStatus();
+}
+let chceAktualizacji=false;
+function rejestrujSW(){
+  if(!ONLINE_MODE||!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(chceAktualizacji){chceAktualizacji=false;location.reload();}});
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    const sprawdz=()=>{if(reg.waiting&&navigator.serviceWorker.controller)pokazAktualizacje(reg.waiting);};
+    sprawdz();
+    reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')sprawdz();});});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
+  }).catch(()=>{});
+}
+function pokazAktualizacje(worker){
+  const bar=document.getElementById('aktualizacja');
+  bar.hidden=false;document.body.classList.add('z-paskiem');
+  bar.querySelector('button').onclick=()=>{chceAktualizacji=true;bar.querySelector('button').disabled=true;worker.postMessage({typ:'aktywuj'});};
+}
 
 /* ============ narzędzia UI ============ */
 const app=document.getElementById('app');
@@ -444,81 +561,211 @@ function h(tag,cls,html){const e=document.createElement(tag);if(cls)e.className=
 function shuffle(a){a=a.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]];}return a;}
 function shuffledNot(a,same){if(a.length<2)return a.slice();let r;for(let k=0;k<20;k++){r=shuffle(a);if(!same(r))return r;}return r;}
 // porównanie odpowiedzi: bez spacji, bez wielkości liter, kropka = przecinek, każdy myślnik = minus, liczby porównywane jako liczby (0,50 = 0,5)
-function norm(s){return String(s).toLowerCase().replace(/[\s\u00a0\u202f]+/g,'').replace(/\./g,',').replace(/[−–—‐‑‒]/g,'-');}
+function norm(s){return String(s).toLowerCase().replace(/[\s  ]+/g,'').replace(/\./g,',').replace(/[−–—‐‑‒]/g,'-');}
 function sameAnswer(a,b){
   const x=norm(a),y=norm(b);if(x===y)return true;
   const n=/^[-+]?\d+(,\d+)?$/;
   return n.test(x)&&n.test(y)&&parseFloat(x.replace(',','.'))===parseFloat(y.replace(',','.'));
 }
 function pl(n,a,b,c){const d=n%10,e=n%100;return n+' '+(n===1?a:(d>=2&&d<=4&&!(e>=12&&e<=14))?b:c);}
-function backBtn(){const b=h('button','back','‹ Wróć');b.onclick=home;return b;}
+const jestSa=n=>{const d=n%10,e=n%100;return n!==1&&d>=2&&d<=4&&!(e>=12&&e<=14)?'są':'jest';};
 function toTop(){window.scrollTo(0,0);}
+function btn(label,cls,fn){const b=h('button',cls,label);b.type='button';b.onclick=fn;return b;}
 
-/* ============ ekran główny ============ */
-function home(){
+/* ============ nawigacja ============ */
+// Każdy ekran ma adres po #, a każde przejście dokłada wpis historii.
+// Dzięki temu systemowy „wstecz” na Androidzie cofa o jeden ekran zamiast zamykać aplikację.
+const depth=()=>(history.state&&history.state.d)||0;
+function go(hash){history.pushState({d:depth()+1},'',hash);render();}
+function back(fallback){if(depth()>0)history.back();else{history.replaceState({d:0},'',fallback);render();}}
+function backBtn(fallback,label){const b=h('button','back',label||'‹ Wróć');b.type='button';b.onclick=()=>back(fallback);return b;}
+window.addEventListener('popstate',()=>render());
+const route=()=>location.hash.replace(/^#\/?/,'').split('/').filter(Boolean).map(x=>{try{return decodeURIComponent(x);}catch(e){return x;}});
+const topicHash=(id=CUR)=>'#/t/'+encodeURIComponent(id);
+let KOMUNIKAT='';
+function render(){
   toTop();app.innerHTML='';
-  const p=P();
-  if(!p){app.append(h('h1',null,'Brak tematów'),h('p',null,'Dodaj plik tematu przyciskiem poniżej.'));app.append(footer());return;}
-  app.append(h('p','subject',esc(p.meta.przedmiot||'')+(p.meta.klasa?', klasa '+esc(p.meta.klasa):'')+(p.origin==='z pliku'?', z pliku':'')),h('h1',null,inline(p.meta.tytul||'Temat')));
-  if(p.meta.tematyka)app.append(h('p','subject',inline(p.meta.tematyka)));
-  if(Object.keys(PKGS).length>1){
-    const sel=h('select');for(const id in PKGS){const o=h('option',null,esc(PKGS[id].meta.tytul||id));o.value=id;if(id===CUR)o.selected=true;sel.append(o);}
-    sel.onchange=()=>{CUR=sel.value;Z.ustaw.ostatni=CUR;zapiszUstaw();home();};app.append(sel);
+  if(KOMUNIKAT){app.append(h('div','note',esc(KOMUNIKAT)));KOMUNIKAT='';}
+  const r=route();
+  if(r[0]==='ustawienia')return ustawienia();
+  if(r[0]==='import')return ekranImportu();
+  if(!klasa())return ekranKlasy();
+  if(r[0]==='t'&&r[1]){
+    if(!PKGS[r[1]]){app.append(h('div','note','Nie ma tematu „'+esc(r[1])+'” w tym telefonie.'));history.replaceState({d:depth()},'','#/');return lista();}
+    CUR=r[1];if(Z.ustaw.ostatni!==CUR){Z.ustaw.ostatni=CUR;zapiszUstaw();}
+    const p=P(),ch=checkable();
+    switch(r[2]||''){
+      case 'kompendium':if(p.chapters.length)return showDoc();break;
+      case 'kartka':if(p.tasks.some(t=>t.typ==='pisemne'))return showWritten();break;
+      case 'fiszki':if(p.cards.length)return flash(p.cards);break;
+      case 'cwiczenia':if(ch.length)return session('cw',pickPractice());break;
+      case 'bledy':{const e=bledy();if(e.tasks.length)return session('cw',shuffle(e.tasks));if(e.cards.length)return flash(e.cards);break;}
+      case 'sprawdzian':if(ch.length)return session('test',shuffle(ch).slice(0,10));break;
+      case 'zadanie':{const t=ch.find(x=>x.id===r[3]);if(t)return session('cw',[t]);break;}
+    }
+    return home();
   }
-  const all=[...checkable(),...p.cards];const done=all.filter(mastered).length;
-  const prog=h('div','progress');prog.innerHTML='<div class="bar"><span style="width:'+(all.length?Math.round(100*done/all.length):0)+'%"></span></div><small>Opanowane: '+done+' z '+all.length+'</small>';
-  app.append(prog);
-  const errors=checkable().filter(t=>{const s=st(t.id);return s&&s.last===0;});
-  const errCards=p.cards.filter(c=>{const s=st(c.id);return s&&s.last===0;});
-  const written=p.tasks.filter(t=>t.typ==='pisemne');
-  const menu=h('div','menu');
-  const item=(label,count,fn,dis)=>{const b=h('button',null,'<span>'+label+'</span><span>'+count+'</span>');b.onclick=fn;if(dis)b.disabled=true;menu.append(b);};
-  item('Kompendium',pl(p.chapters.length,'dział','działy','działów'),showDoc,!p.chapters.length);
-  item('Fiszki',pl(p.cards.length,'karta','karty','kart'),()=>flash(p.cards),!p.cards.length);
-  item('Ćwiczenia',pl(checkable().length,'zadanie','zadania','zadań'),()=>session('cw',pickPractice()),!checkable().length);
-  item('Powtórka błędów',(errors.length+errCards.length)+' do poprawy',()=>{errors.length?session('cw',shuffle(errors)):flash(errCards);},!(errors.length+errCards.length));
-  item('Sprawdzian',pl(Math.min(10,checkable().length),'zadanie','zadania','zadań')+', ocena na końcu',()=>session('test',shuffle(checkable()).slice(0,10)),!checkable().length);
-  item('Na kartce',pl(written.length,'zadanie','zadania','zadań'),showWritten,!written.length);
-  app.append(menu);
-  if(p.warn.length){const w=h('div','warn');w.innerHTML='<strong>Uwagi do pliku tematu</strong><br>'+p.warn.map(esc).join('<br>');app.append(w);}
+  lista();
+}
+
+/* ============ ekrany: klasa, lista tematów, ustawienia ============ */
+function ekranKlasy(){
+  app.append(h('h1',null,'Nauka'),h('p','subject','Wybierz klasę. Zmienisz ją później w ustawieniach.'));
+  const m=h('div','menu');
+  for(const k of ['8','4']){const b=btn('<span>Klasa '+k+'</span><span>›</span>',null,()=>{Z.ustaw.klasa=k;zapiszUstaw();history.replaceState({d:depth()},'','#/');render();});b.dataset.klasa=k;m.append(b);}
+  app.append(m,footer());
+}
+function bledy(p=P()){
+  return {tasks:checkable(p).filter(t=>{const s=st(t.id);return s&&s.last===0;}),cards:p.cards.filter(c=>{const s=st(c.id);return s&&s.last===0;})};
+}
+function lista(){
+  app.append(h('p','subject','Klasa '+esc(klasa())),h('h1',null,'Tematy'));
+  const order=p=>{const i=KAT.findIndex(t=>t.id===p.id);return i<0?1e6+p.ord:i;};
+  const ps=Object.values(PKGS).filter(dlaKlasy).sort((a,b)=>ORIGIN_RANK[a.origin]-ORIGIN_RANK[b.origin]||order(a)-order(b));
+  const nied=Object.values(NIEDOSTEPNE).filter(t=>!PKGS[t.id]&&String(t.klasa)===klasa());
+  if(!ps.some(p=>p.origin!=='z pliku')&&!nied.length)app.append(h('div','empty','<p><strong>Tematy wkrótce.</strong></p><p>Dla klasy '+esc(klasa())+' nie ma jeszcze tematów. Pojawią się tutaj same, gdy zostaną dodane.</p>'));
+  const menu=h('div','menu topics');
+  for(const p of ps){
+    const pr=postepTematu(p);
+    const b=btn('<span><span class="t">'+inline(p.meta.tytul||p.id)+'</span><small>'+esc(p.meta.przedmiot||'')+(p.origin==='z pliku'?' · <span class="badge">z pliku</span>':'')+'</small></span><span>'+pr.done+' z '+pr.all+'</span>','topic',()=>go(topicHash(p.id)));
+    b.dataset.temat=p.id;menu.append(b);
+  }
+  for(const t of nied){const b=btn('<span><span class="t">'+esc(t.tytul||t.id)+'</span><small>niedostępny bez internetu</small></span><span></span>','topic',null);b.disabled=true;menu.append(b);}
+  if(menu.children.length)app.append(menu);
+  if(KAT_BLAD)app.append(h('p','counter','Nie udało się pobrać katalogu tematów. Widać tylko tematy zapisane w telefonie.'));
   app.append(footer());
 }
-function footer(){
-  const f=h('div','foot');
-  const s=h('div','status'+(storageOK?'':' off'));
-  s.textContent=storageOK
-    ?'Zapis postępu działa. To uruchomienie nr '+Z.licznik.uruchomienia+', pierwsze '+new Date(Z.licznik.pierwsze).toLocaleDateString('pl-PL')+'.'
-    :'Zapis postępu nie działa w tym miejscu. Postęp zniknie po zamknięciu.';
-  f.append(s);
-  const links=h('div','links');
-  const l=(t,fn)=>{const b=h('button',null,t);b.onclick=fn;links.append(b);};
-  l('Zapisz postęp do pliku',exportProgress);
-  l('Dodaj temat z pliku',()=>document.getElementById('plik').click());
-  l('Wyzeruj postęp tematu',()=>{if(confirm('Wyzerować postęp w tym temacie?')){for(const k in Z.items)if(k.startsWith(CUR+':')){delete Z.items[k];zapiszWpis(k);}home();}});
-  f.append(links);return f;
+function ustawienia(){
+  app.append(backBtn('#/'),h('h1',null,'Ustawienia'));
+  app.append(h('h2',null,'Klasa'));
+  const kl=h('div','seg');
+  for(const k of ['8','4']){const b=btn('Klasa '+k,k===klasa()?'sel':null,()=>{Z.ustaw.klasa=k;zapiszUstaw();render();});b.dataset.klasa=k;kl.append(b);}
+  app.append(kl);
+  app.append(h('h2',null,'Postęp'),h('p','subject','Postęp jest zapisany tylko w tym telefonie i tylko pod tym adresem. Plik z postępem przenosi go z wersji otwieranej z pliku do wersji z internetu albo na inny telefon.'));
+  const a=h('div','actions');
+  a.append(btn('Zapisz postęp do pliku','btn',exportProgress),btn('Wczytaj postęp z pliku','btn ghost',()=>document.getElementById('plik-postep').click()));
+  app.append(a);
+  const d=h('details',null,'<summary>Wklej postęp jako tekst</summary>');const ta=h('textarea');ta.id='postep-tekst';
+  d.append(ta,h('div','actions'));d.lastChild.append(btn('Wczytaj tekst','btn ghost',()=>przyjmijPlikPostepu(ta.value)));app.append(d);
+  app.append(h('h2',null,'Tematy z pliku'));
+  const ids=Object.keys(Z.pliki);
+  if(!ids.length)app.append(h('p','subject','Brak. Temat z pliku zostaje w telefonie i jest oznaczony „z pliku”.'));
+  for(const id of ids){
+    const p=parsePackage(Z.pliki[id]);const row=h('div','filerow','<span>'+inline(p.meta.tytul||id)+'<small> wersja '+esc(p.meta.wersja||'brak')+(PKGS[id]&&PKGS[id].origin!=='z pliku'?', używana jest wersja z katalogu':'')+'</small></span>');
+    row.append(btn('Usuń','btn ghost small',()=>{if(confirm('Usunąć temat „'+(p.meta.tytul||id)+'” wgrany z pliku? Postęp zostanie.')){delete Z.pliki[id];zapiszPlik(id);zbudujListe();render();}}));
+    app.append(row);
+  }
+  const a2=h('div','actions');a2.append(btn('Dodaj temat z pliku','btn ghost',()=>document.getElementById('plik').click()));app.append(a2);
+  app.append(h('h2',null,'O aplikacji'));
+  const s=h('div','status');s.id='status';app.append(s);
+  const mig=jsonGet(K_MIGR,null);
+  if(mig&&mig.z)app.append(h('p','counter','Postęp przeniesiony ze starego zapisu ('+pl(+mig.wpisow||0,'wpis','wpisy','wpisów')+'), '+new Date(mig.kiedy).toLocaleDateString('pl-PL')+'.'));
+  odswiezStatus();
 }
-document.getElementById('plik').onchange=e=>{
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();r.onload=()=>{const src=String(r.result);const p=parsePackage(src);Z.pliki[p.id]=src;zapiszPlik(p.id);CUR=p.id;Z.ustaw.ostatni=CUR;zapiszUstaw();loadPackages();home();};r.readAsText(file);e.target.value='';
-};
-function stanDoEksportu(){return {format:'nauka-postep',wersja:2,eksport:new Date().toISOString(),licznik:Z.licznik,ustawienia:Z.ustaw,postep:Z.items,tematyZPliku:Z.pliki};}
+function statusText(){
+  if(!storageOK)return 'Zapis postępu nie działa w tym miejscu. Postęp zniknie po zamknięciu.';
+  const t=TRWALA===true?'tak':TRWALA===false?'nie, przeglądarka może ją wyczyścić przy braku miejsca':TRWALA==='brak'?'nieobsługiwana':'sprawdzam';
+  return 'Zapis postępu działa. To uruchomienie nr '+Z.licznik.uruchomienia+', pierwsze '+new Date(Z.licznik.pierwsze).toLocaleDateString('pl-PL')+'. Pamięć trwała: '+t+'. Wersja '+WERSJA+(ONLINE_MODE?'':', jednoplikowa')+'.';
+}
+function odswiezStatus(){const s=document.getElementById('status');if(s){s.textContent=statusText();s.className='status'+(storageOK?'':' off');}}
+function footer(withReset){
+  const f=h('div','foot');
+  const s=h('div','status');s.id='status';f.append(s);
+  const links=h('div','links');
+  const l=(t,fn)=>links.append(btn(t,null,fn));
+  l('Zapisz postęp do pliku',exportProgress);
+  l('Wczytaj postęp z pliku',()=>document.getElementById('plik-postep').click());
+  l('Dodaj temat z pliku',()=>document.getElementById('plik').click());
+  if(withReset)l('Wyzeruj postęp tematu',()=>{if(confirm('Wyzerować postęp w tym temacie?')){for(const k in Z.items)if(k.startsWith(CUR+':')){delete Z.items[k];zapiszWpis(k);}render();}});
+  l('Ustawienia',()=>go('#/ustawienia'));
+  f.append(links);
+  s.textContent=statusText();s.className='status'+(storageOK?'':' off');
+  return f;
+}
+
+/* ============ pliki: temat i postęp ============ */
+function przyjmijPlikTematu(src){
+  src=String(src).replace(/^﻿/,'');
+  if(/^\s*\{/.test(src)){KOMUNIKAT='To wygląda na plik z postępem. Użyj „Wczytaj postęp z pliku”.';return render();}
+  const p=parsePackage(src);
+  if(!p.meta.tytul&&!p.tasks.length&&!p.cards.length&&!p.chapters.length){KOMUNIKAT='To nie wygląda na plik tematu: nie ma nagłówka ani sekcji.';return render();}
+  Z.pliki[p.id]=src;zapiszPlik(p.id);zbudujListe();
+  const t=p.meta.tytul||p.id;
+  KOMUNIKAT=PKGS[p.id].origin==='z pliku'?'Dodano temat „'+t+'” z pliku.':'Zapisano temat „'+t+'” z pliku, ale aplikacja ma już tę samą albo nowszą wersję ('+(PKGS[p.id].meta.wersja||'bez wersji')+') i używa jej.';
+  go(topicHash(p.id));
+}
+let IMPORT=null;
+function przyjmijPlikPostepu(text){
+  const imp=odczytajPostep(text);
+  if(!imp){KOMUNIKAT='To nie jest plik z postępem aplikacji Nauka.';return render();}
+  IMPORT=imp;go('#/import');
+}
+function ekranImportu(){
+  if(!IMPORT){history.replaceState({d:depth()},'','#/');return render();}
+  const imp=IMPORT,n=Object.keys(imp.items).length;
+  const per={};for(const k in imp.items){const t=k.slice(0,k.indexOf(':'));per[t]=(per[t]||0)+1;}
+  app.append(backBtn('#/'),h('h1',null,'Wczytaj postęp'));
+  const info=h('div','task');
+  info.innerHTML='<p>W pliku '+jestSa(n)+' '+pl(n,'wpis','wpisy','wpisów')+' postępu'+(imp.eksport?', zapisany '+esc(new Date(imp.eksport).toLocaleString('pl-PL')):'')+' ('+esc(imp.zrodlo)+').</p>'+
+    '<ul>'+Object.keys(per).map(t=>'<li>'+(PKGS[t]?inline(PKGS[t].meta.tytul||t):esc(t))+': '+per[t]+'</li>').join('')+'</ul>'+
+    (Object.keys(imp.pliki).length?'<p>Tematy z pliku: '+Object.keys(imp.pliki).length+'.</p>':'')+
+    (imp.licznik?'<p>Licznik uruchomień w pliku: '+imp.licznik.uruchomienia+'.</p>':'')+
+    '<p>Teraz w telefonie: '+pl(Object.keys(Z.items).length,'wpis','wpisy','wpisów')+'.</p>';
+  app.append(info,h('p',null,'<strong>Połączyć z obecnym postępem czy go zastąpić?</strong>'),
+    h('p','subject','Połącz: gdy to samo zadanie jest w obu miejscach, zostaje nowszy wpis. Zastąp: obecny postęp w telefonie zniknie i zostanie tylko ten z pliku.'));
+  const done=(tryb,msg)=>{wpiszPostep(imp,tryb);IMPORT=null;zbudujListe();KOMUNIKAT=msg;history.replaceState({d:depth()},'','#/');render();};
+  const a=h('div','actions');
+  a.append(btn('Połącz','btn',()=>done('polacz','Postęp z pliku połączony z obecnym.')),btn('Zastąp','btn ghost',()=>done('zastap','Postęp zastąpiony postępem z pliku.')),btn('Anuluj','btn ghost',()=>{IMPORT=null;back('#/');}));
+  app.append(a);
+}
+document.getElementById('plik').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)f.text().then(przyjmijPlikTematu);};
+document.getElementById('plik-postep').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)f.text().then(przyjmijPlikPostepu);};
 function exportProgress(){
   const data=JSON.stringify(stanDoEksportu(),null,1);
-  try{const a=h('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='postep-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();}
-  catch(e){toTop();app.innerHTML='';app.append(backBtn(),h('p',null,'Skopiuj ten tekst i zapisz go w notatkach:'));const t=h('textarea');t.value=data;app.append(t);}
+  try{
+    const a=h('a');const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+    a.href=url;a.download='nauka-postep-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){toTop();app.innerHTML='';app.append(backBtn('#/'),h('p',null,'Skopiuj ten tekst i zapisz go w notatkach:'));const t=h('textarea');t.value=data;app.append(t);}
 }
+
+/* ============ ekran tematu ============ */
+function home(){
+  const p=P();
+  app.append(backBtn('#/','‹ Tematy'),h('p','subject',esc(p.meta.przedmiot||'')+(p.meta.klasa?', klasa '+esc(p.meta.klasa):'')+(p.origin==='z pliku'?', z pliku':'')),h('h1',null,inline(p.meta.tytul||'Temat')));
+  if(p.meta.tematyka)app.append(h('p','subject',inline(p.meta.tematyka)));
+  const pr=postepTematu(p);
+  const prog=h('div','progress');prog.innerHTML='<div class="bar"><span style="width:'+(pr.all?Math.round(100*pr.done/pr.all):0)+'%"></span></div><small>Opanowane: '+pr.done+' z '+pr.all+'</small>';
+  app.append(prog);
+  const e=bledy(p),written=p.tasks.filter(t=>t.typ==='pisemne'),ch=checkable(p);
+  const menu=h('div','menu');
+  const item=(label,count,w,dis)=>{const b=btn('<span>'+label+'</span><span>'+count+'</span>',null,()=>go(topicHash()+'/'+w));b.dataset.w=w;if(dis)b.disabled=true;menu.append(b);};
+  item('Kompendium',pl(p.chapters.length,'dział','działy','działów'),'kompendium',!p.chapters.length);
+  item('Fiszki',pl(p.cards.length,'karta','karty','kart'),'fiszki',!p.cards.length);
+  item('Ćwiczenia',pl(ch.length,'zadanie','zadania','zadań'),'cwiczenia',!ch.length);
+  item('Powtórka błędów',(e.tasks.length+e.cards.length)+' do poprawy','bledy',!(e.tasks.length+e.cards.length));
+  item('Sprawdzian',pl(Math.min(10,ch.length),'zadanie','zadania','zadań')+', ocena na końcu','sprawdzian',!ch.length);
+  item('Na kartce',pl(written.length,'zadanie','zadania','zadań'),'kartka',!written.length);
+  app.append(menu);
+  if(p.warn.length){const w=h('div','warn');w.innerHTML='<strong>Uwagi do pliku tematu</strong><br>'+p.warn.map(esc).join('<br>');app.append(w);}
+  app.append(footer(true));
+}
+
 /* ============ kompendium i zadania pisemne ============ */
 function showDoc(){
-  toTop();app.innerHTML='';const p=P();
-  app.append(backBtn(),h('h1',null,inline(p.meta.tytul||'')));
-  const toc=h('nav','toc');p.chapters.forEach((c,k)=>{if(c.title)toc.innerHTML+='<a href="#r'+k+'">'+inline(c.title)+'</a>';});app.append(toc);
+  const p=P();
+  app.append(backBtn(topicHash()),h('h1',null,inline(p.meta.tytul||'')));
+  // spis treści przewija stronę, a nie zmienia adresu (adres po # należy do nawigacji)
+  const toc=h('nav','toc');
+  p.chapters.forEach((c,k)=>{if(c.title)toc.append(btn(inline(c.title),'toclink',()=>{const el=document.getElementById('r'+k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}));});
+  app.append(toc);
   const d=h('div','doc serif');
-  p.chapters.forEach((c,k)=>{d.innerHTML+=(c.title?'<h2 id="r'+k+'">'+inline(c.title)+'</h2>':'')+md(c.lines);});
+  d.innerHTML=p.chapters.map((c,k)=>(c.title?'<h2 id="r'+k+'">'+inline(c.title)+'</h2>':'')+md(c.lines)).join('');
   app.append(d);
 }
 function showWritten(){
-  toTop();app.innerHTML='';const p=P();
-  app.append(backBtn(),h('h1',null,'Na kartce'),h('p','subject','Te zadania wymagają zapisu rozumowania. Rozwiąż je w zeszycie, a potem porównaj z rozwiązaniem.'));
+  const p=P();
+  app.append(backBtn(topicHash()),h('h1',null,'Na kartce'),h('p','subject','Te zadania wymagają zapisu rozumowania. Rozwiąż je w zeszycie, a potem porównaj z rozwiązaniem.'));
   p.tasks.filter(t=>t.typ==='pisemne').forEach(t=>{
     const c=h('div','task');c.innerHTML='<h3>'+inline(t.title)+', '+t.pkt+' pkt</h3><div class="prompt">'+md(t.prompt)+'</div><details><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details>';
     app.append(c);
@@ -635,11 +882,11 @@ function session(mode,list){
     if(idx>=list.length)return finish();
     toTop();app.innerHTML='';
     const t=list[idx];
-    app.append(backBtn(),h('p','counter',(mode==='test'?'Sprawdzian, zadanie ':'Zadanie ')+(idx+1)+' z '+list.length));
-    const card=h('div','task');card.append(h('h3',null,inline(t.title)+(mode==='test'?', '+t.pkt+' pkt':'')));
+    app.append(backBtn(topicHash()),h('p','counter',(mode==='test'?'Sprawdzian, zadanie ':'Zadanie ')+(idx+1)+' z '+list.length));
+    const card=h('div','task');card.dataset.id=t.id;card.dataset.typ=t.typ;card.append(h('h3',null,inline(t.title)+(mode==='test'?', '+t.pkt+' pkt':'')));
     const box=h('div');card.append(box);
     const check=RENDER[t.typ](t,box);
-    const acts=h('div','actions');const go=h('button','btn',mode==='test'?'Dalej':'Sprawdź');go.type='button';acts.append(go);
+    const acts=h('div','actions');const go=h('button','btn',mode==='test'?'Dalej':'Sprawdź');go.type='button';go.dataset.akcja='sprawdz';acts.append(go);
     const msg=h('p','hint');card.append(acts,msg);app.append(card);
     box.querySelectorAll('input.gap').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(go.isConnected)go.click();}}));
     go.onclick=()=>{
@@ -651,7 +898,7 @@ function session(mode,list){
       const v=h('div','verdict');
       v.innerHTML='<div class="head '+(r.ok?'ok':'no')+'">'+(r.ok?'Dobrze.':'Nie tym razem.')+'</div>'+r.html+
         '<details'+(r.ok?'':' open')+'><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details>';
-      const a2=h('div','actions');const nb=h('button','btn',idx+1<list.length?'Dalej':'Zakończ');nb.type='button';nb.onclick=()=>{idx++;next();};a2.append(nb);v.append(a2);
+      const a2=h('div','actions');const nb=btn(idx+1<list.length?'Dalej':'Zakończ','btn',()=>{idx++;next();});nb.dataset.akcja='dalej';a2.append(nb);v.append(a2);
       card.append(v);nb.focus({preventScroll:true});v.scrollIntoView({behavior:'smooth',block:'nearest'});
     };
   }
@@ -662,9 +909,9 @@ function session(mode,list){
     if(mode==='test'){
       results.forEach(({t,r})=>{const c=h('div','task');c.innerHTML='<h3>'+inline(t.title)+', '+(r.ok?t.pkt:0)+' z '+t.pkt+' pkt</h3>'+(r.ok?'<p class="verdict head ok">Dobrze.</p>':'<div class="verdict"><div class="head no">Źle.</div>'+r.html+'<details><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details></div>');app.append(c);});
     }
-    const a=h('div','actions');const b1=h('button','btn','Na początek');b1.onclick=home;a.append(b1);
+    const a=h('div','actions');a.append(btn('Na początek','btn',()=>back(topicHash())));
     const wrong=results.filter(x=>!x.r.ok).map(x=>x.t);
-    if(wrong.length){const b2=h('button','btn ghost','Popraw błędy ('+wrong.length+')');b2.onclick=()=>session('cw',shuffle(wrong));a.append(b2);}
+    if(wrong.length)a.append(btn('Popraw błędy ('+wrong.length+')','btn ghost',()=>session('cw',shuffle(wrong))));
     app.append(a);
   }
   next();
@@ -674,23 +921,34 @@ function flash(cards){
   let idx=0,known=0;
   function next(){
     toTop();app.innerHTML='';
-    if(idx>=q.length){app.append(h('h1',null,'Koniec fiszek'),h('p','summary-score',known+' / '+q.length));const b=h('button','btn','Na początek');b.onclick=home;app.append(b);return;}
+    if(idx>=q.length){app.append(h('h1',null,'Koniec fiszek'),h('p','summary-score',known+' / '+q.length),btn('Na początek','btn',()=>back(topicHash())));return;}
     const c=q[idx];
-    app.append(backBtn(),h('p','counter','Fiszka '+(idx+1)+' z '+q.length));
-    const card=h('div','card','<div class="front">'+inline(c.front)+'</div>');
+    app.append(backBtn(topicHash()),h('p','counter','Fiszka '+(idx+1)+' z '+q.length));
+    const card=h('div','card','<div class="front">'+inline(c.front)+'</div>');card.dataset.id=c.id;
     const acts=h('div','actions');acts.style.justifyContent='center';
-    const show=h('button','btn','Pokaż odpowiedź');show.type='button';acts.append(show);card.append(acts);app.append(card);
+    const show=btn('Pokaż odpowiedź','btn',null);acts.append(show);card.append(acts);app.append(card);
     show.onclick=()=>{
       acts.remove();card.append(h('div','backside',inline(c.back)));
       const a2=h('div','actions');a2.style.justifyContent='center';
-      const no=h('button','btn ghost','Jeszcze nie');const yes=h('button','btn','Umiem');
-      no.onclick=()=>{record(c.id,false);idx++;next();};yes.onclick=()=>{record(c.id,true);known++;idx++;next();};
-      a2.append(no,yes);card.append(a2);
+      a2.append(btn('Jeszcze nie','btn ghost',()=>{record(c.id,false);idx++;next();}),btn('Umiem','btn',()=>{record(c.id,true);known++;idx++;next();}));
+      card.append(a2);
     };
   }
   next();
 }
-loadPackages();home();
+
+/* ============ start ============ */
+window.nauka={get tematy(){return PKGS;},get stan(){return Z;},stanDoEksportu,odczytajPostep,get wersja(){return WERSJA;},get trwala(){return TRWALA;}};
+async function start(){
+  app.innerHTML='<p class="counter">Wczytywanie tematów…</p>';
+  rejestrujSW();
+  trwalosc();
+  await zaladujKatalog();
+  zbudujListe();
+  if(!history.state)history.replaceState({d:0},'',location.hash||'#/');
+  render();
+}
+start();
 </script>
 </body>
 </html>

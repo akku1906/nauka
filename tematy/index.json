@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "tematy": [
+    {
+      "id": "mat-e8-liczby",
+      "tytul": "Liczby i działania",
+      "przedmiot": "Matematyka",
+      "klasa": 8,
+      "wersja": "2026-11-03",
+      "plik": "mat-e8-liczby.md"
+    },
+    {
+      "id": "mat-e8-figury",
+      "tytul": "Figury płaskie",
+      "przedmiot": "Matematyka",
+      "klasa": 8,
+      "wersja": "2026-11-01",
+      "plik": "mat-e8-figury.md"
+    }
+  ]
+}
