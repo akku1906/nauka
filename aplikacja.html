@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FAFBF7">
+<title>Nauka</title>
+<style>
+:root{
+  --paper:#FAFBF7; --grid:#E3E9EF; --margin:#EBB0AE;
+  --ink:#1E2B45; --muted:#5B6880; --line:#C9D2DD;
+  --red:#C62F2F; --green:#2F7A4B; --marker:#FFE76A; --markerInk:#1E2B45;
+  --card:#FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#14181E; --grid:#1D232B; --margin:#5A3434;
+    --ink:#E4E8EE; --muted:#9AA6B8; --line:#344050;
+    --red:#FF7A70; --green:#6FCF97; --marker:#7A6A12; --markerInk:#FFF6C9;
+    --card:#1A1F27;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:22px 22px;
+  color:var(--ink);
+  font:17px/1.5 system-ui, Roboto, "Segoe UI", sans-serif;
+  min-height:100vh;
+}
+body::before{content:"";position:fixed;top:0;bottom:0;left:14px;width:2px;background:var(--margin);opacity:.7;pointer-events:none}
+main{max-width:640px;margin:0 auto;padding:18px 18px 64px 28px}
+h1{font-family:"Noto Serif",Georgia,serif;font-weight:700;font-size:30px;line-height:1.15;margin:4px 0 2px}
+h2{font-family:"Noto Serif",Georgia,serif;font-size:21px;margin:28px 0 8px}
+.subject{color:var(--muted);font-size:15px;margin:0}
+.serif{font-family:"Noto Serif",Georgia,serif;line-height:1.6}
+p{margin:.5em 0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+.progress{margin:16px 0 22px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--green)}
+.progress small{color:var(--muted)}
+.menu{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.menu button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;background:transparent;border:0;border-bottom:1px solid var(--line);padding:15px 4px;text-align:left;font-size:19px}
+.menu button span:last-child{color:var(--muted);font-size:15px;white-space:nowrap}
+.menu button:disabled{opacity:.45;cursor:default}
+.foot{margin-top:28px;color:var(--muted);font-size:14px}
+.foot .status{padding:10px 12px;border-left:3px solid var(--green);background:var(--card);margin-bottom:14px}
+.foot .status.off{border-left-color:var(--red)}
+.foot .links{display:flex;flex-wrap:wrap;gap:8px 16px}
+.foot .links button{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;font-size:14px}
+.back{background:none;border:0;padding:6px 0;color:var(--muted);font-size:15px}
+.counter{color:var(--muted);font-size:14px;margin-top:6px}
+.task{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 16px 18px;margin-top:10px}
+.task h3{font-size:14px;font-weight:600;color:var(--muted);margin:0 0 8px}
+.prompt{font-size:19px;margin-bottom:14px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:block;width:100%;text-align:left;background:transparent;border:1.5px solid var(--line);border-radius:8px;padding:11px 14px;font-size:19px}
+.opt.sel,.chip.sel,.pf button.sel{background:var(--marker);color:var(--markerInk);border-color:var(--marker)}
+.good{border-color:var(--green)!important;box-shadow:inset 4px 0 0 var(--green)}
+.bad{border-color:var(--red)!important;box-shadow:inset 4px 0 0 var(--red)}
+.opt.bad{text-decoration:line-through;text-decoration-color:var(--red)}
+.pf{display:flex;flex-direction:column;gap:10px}
+.pf .row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px}
+.pf .row>div{display:flex;gap:6px;flex-shrink:0}
+.pf button{border:1.5px solid var(--line);background:transparent;border-radius:6px;padding:6px 10px;font-size:15px}
+.gap{font:inherit;font-size:18px;color:inherit;background:transparent;border:0;border-bottom:2px solid var(--ink);padding:2px 4px;text-align:center;border-radius:0}
+.gap.good{border-bottom-color:var(--green);box-shadow:none;color:var(--green)}
+.gap.bad{border-bottom-color:var(--red);box-shadow:none;color:var(--red)}
+.zone{min-height:52px;border:1.5px dashed var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+.zone:empty::before{content:attr(data-empty);color:var(--muted);font-size:15px;padding:6px}
+.pool{display:flex;flex-direction:column;gap:6px}
+.chip{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:transparent;border-radius:8px;padding:9px 12px;font-size:17px}
+.zone .chip{border-style:solid}
+.pairs{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:8px}
+.pairs .col{display:flex;flex-direction:column;gap:8px}
+.pairs .chip{position:relative;padding-left:36px;min-height:48px}
+.pairs .tag{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.pairs .chip.on .tag{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{border:0;border-radius:24px;padding:12px 22px;font-size:17px;font-weight:600;background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.hint{color:var(--red);font-size:15px;margin-top:10px}
+.verdict{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.verdict .head{font-weight:700;font-size:18px}
+.verdict .head.ok{color:var(--green)} .verdict .head.no{color:var(--red)}
+.why{margin:.4em 0}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--muted)}
+.solution{padding:6px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:28px 18px;margin-top:10px;text-align:center;min-height:200px;display:flex;flex-direction:column;justify-content:center;gap:16px}
+.card .front{font-size:24px;font-family:"Noto Serif",Georgia,serif}
+.card .backside{font-size:19px;border-top:1px solid var(--line);padding-top:14px}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0 4px;font-size:15px}
+.toc a{color:var(--muted)}
+.doc table,.task table{border-collapse:collapse;margin:10px 0;font-size:16px}
+.doc th,.doc td,.task th,.task td{border:1px solid var(--line);padding:5px 9px;text-align:left}
+.tablewrap{overflow-x:auto}
+.doc blockquote{margin:12px 0;padding:6px 12px;border-left:4px solid var(--marker);background:var(--card)}
+.mathblock{overflow-x:auto;text-align:center;margin:12px 0;font-size:20px}
+.f{font-family:"Noto Serif",Georgia,serif;white-space:nowrap;font-size:1.06em}
+.f i{font-style:italic}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.86em;margin:0 .12em;line-height:1.15}
+.fr .nu{border-bottom:1.2px solid currentColor;padding:0 .2em .05em}
+.fr .de{padding:.05em .2em 0}
+.sq{white-space:nowrap}
+.sq .rad{border-top:1.2px solid currentColor;padding:0 .1em}
+.summary-score{font-family:"Noto Serif",Georgia,serif;font-size:44px;margin:8px 0}
+.warn{border-left:3px solid var(--red);padding:8px 12px;background:var(--card);font-size:14px;margin-top:14px}
+textarea{width:100%;min-height:160px;font:13px monospace;color:inherit;background:var(--card);border:1px solid var(--line)}
+select{font:inherit;font-size:16px;padding:6px;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:6px;margin:6px 0 0}
+@media (prefers-reduced-motion: no-preference){
+  .verdict{animation:in .18s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<input type="file" id="plik" accept=".md,text/markdown,text/plain" hidden>
+<script type="text/markdown" class="paczka">
+---
+id: mat-e8-liczby
+tytul: Liczby i działania
+przedmiot: Matematyka
+tematyka: Egzamin ósmoklasisty 2027 — wzory, prawa, figury
+klasa: 8
+czas: 30 min
+wersja: 2026-10-31
+---
+
+# Kompendium
+
+## Kolejność działań
+Działania wykonujemy zawsze w tej samej kolejności:
+1. nawiasy, od wewnętrznych,
+2. potęgi i pierwiastki,
+3. mnożenie i dzielenie, od lewej do prawej,
+4. dodawanie i odejmowanie, od lewej do prawej.
+
+$$ 20 - 12 : 4 * 3 = 20 - 3 * 3 = 20 - 9 = 11 $$
+
+> Mnożenie i dzielenie są równorzędne: nie mnożymy najpierw, tylko liczymy od lewej.
+
+## Prawa działań i znaki
+Przemienność: $a + b = b + a$, $a * b = b * a$. Rozdzielność:
+
+$$ a * (b + c) = a * b + a * c $$
+
+Sprytne liczenie: $23 + 49 + 77 = (23 + 77) + 49 = 149$, $25 * 4 = 100$, $125 * 8 = 1000$.
+
+Znaki przy mnożeniu i dzieleniu: minus razy minus daje plus, minus razy plus daje minus. Odejmowanie liczby ujemnej to dodawanie: $5 - (-3) = 5 + 3 = 8$.
+
+## Wartość bezwzględna
+Wartość bezwzględna to odległość liczby od zera na osi liczbowej: $|-7| = 7$, $|7| = 7$, $|0| = 0$.
+
+## Podzielność
+| przez | cecha podzielności |
+|---|---|
+| 2 | ostatnia cyfra parzysta: 0, 2, 4, 6, 8 |
+| 3 | suma cyfr dzieli się przez 3 |
+| 4 | liczba z dwóch ostatnich cyfr dzieli się przez 4 |
+| 5 | ostatnia cyfra 0 lub 5 |
+| 9 | suma cyfr dzieli się przez 9 |
+| 10 | ostatnia cyfra 0 |
+| 100 | dwie ostatnie cyfry 00 |
+
+Przykład: 7524 ma sumę cyfr 18, więc dzieli się przez 3 i przez 9. Końcówka 24 dzieli się przez 4, więc cała liczba też.
+
+## Liczby pierwsze
+**Liczba pierwsza** ma dokładnie dwa dzielniki: 1 i samą siebie. Liczba 1 nie jest ani pierwsza, ani złożona. Liczba 2 jest jedyną parzystą liczbą pierwszą.
+
+Liczby pierwsze do 100: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97.
+
+## Rozkład na czynniki, NWD i NWW
+$$ 360 = 2 * 2 * 2 * 3 * 3 * 5 = 2^3 * 3^2 * 5 $$
+
+Dla $72 = 2^3 * 3^2$ i $60 = 2^2 * 3 * 5$:
+- **NWD** bierze czynniki wspólne, w najmniejszych potęgach: $2^2 * 3 = 12$,
+- **NWW** bierze wszystkie czynniki, w największych potęgach: $2^3 * 3^2 * 5 = 360$.
+
+$$ NWD(a, b) * NWW(a, b) = a * b $$
+
+> Kontrola: $12 * 360 = 4320 = 72 * 60$.
+
+## Dzielenie z resztą
+$$ a = b * q + r,   0 ≤ r < b $$
+
+Tu $a$ to dzielna, $b$ to dzielnik, $q$ to wynik, a $r$ to reszta. Przykład: $47 : 6 = 7$ reszty 5, bo $47 = 6 * 7 + 5$. Reszta jest zawsze mniejsza od dzielnika.
+
+Dni tygodnia: przesunięcie to reszta z dzielenia liczby dni przez 7. Na przykład 100 dni to 14 tygodni i 2 dni.
+
+## Ułamki zwykłe
+Rozszerzanie i skracanie: $\frac{a}{b} = \frac{a * k}{b * k}$, na przykład $\frac{6}{8} = \frac{3}{4}$.
+
+Dodawanie i odejmowanie tylko przy wspólnym mianowniku:
+
+$$ \frac{2}{3} + \frac{1}{4} = \frac{8}{12} + \frac{3}{12} = \frac{11}{12} $$
+
+Mnożenie: licznik razy licznik, mianownik razy mianownik, a skracamy na krzyż: $\frac{4}{9} * \frac{3}{8} = \frac{1}{6}$.
+
+Dzielenie to mnożenie przez odwrotność:
+
+$$ \frac{3}{4} : \frac{3}{8} = \frac{3}{4} * \frac{8}{3} = 2 $$
+
+Liczba mieszana: $2\frac{1}{3} = \frac{7}{3}$, bo $2 * 3 + 1 = 7$.
+
+Ułamek liczby: $\frac{3}{5}$ z 40 to 24. Całość z części: jeśli $\frac{3}{5}$ liczby to 24, to liczba wynosi $24 : \frac{3}{5} = 40$.
+
+## Ułamki dziesiętne i zaokrąglanie
+| ułamek | dziesiętnie |
+|---|---|
+| $\frac{1}{2}$ | 0,5 |
+| $\frac{1}{4}$ | 0,25 |
+| $\frac{3}{4}$ | 0,75 |
+| $\frac{1}{5}$ | 0,2 |
+| $\frac{1}{8}$ | 0,125 |
+| $\frac{1}{20}$ | 0,05 |
+
+Okres zapisujemy w nawiasie: $\frac{1}{3} = 0,333... = 0,(3)$, $\frac{1}{6} = 0,1(6)$, $\frac{2}{11} = 0,(18)$.
+
+Zaokrąglanie: patrzymy na pierwszą odrzucaną cyfrę. Od 0 do 4 w dół, od 5 do 9 w górę. Przykłady: $3,146 ≈ 3,15$ do części setnych, $2748 ≈ 2700$ do setek.
+
+## System rzymski
+| I | V | X | L | C | D | M |
+|---|---|---|---|---|---|---|
+| 1 | 5 | 10 | 50 | 100 | 500 | 1000 |
+
+Mniejszy znak przed większym odejmujemy tylko w parach: IV = 4, IX = 9, XL = 40, XC = 90, CD = 400, CM = 900. Znaki I, X, C, M stoją najwyżej 3 razy z rzędu, a V, L, D nigdy dwa razy.
+
+Przykład: MCMXCIV = 1000 + 900 + 90 + 4 = 1994, a 2027 = MMXXVII.
+
+# Zadania
+
+## Kolejność działań [1 pkt] {quiz #k01}
+Ile wynosi $20 - 12 : 4 * 3$?
+- [x] $11$
+- [ ] $19$
+  > Tu najpierw policzono $4 * 3$. Mnożenie i dzielenie są równorzędne, więc liczymy od lewej: najpierw $12 : 4$.
+- [ ] $6$
+  > Tu najpierw odjęto $20 - 12$. Odejmowanie wykonujemy na samym końcu.
+- [ ] $51$
+  > Tu pomnożono przez 3 cały wynik odejmowania. Mnożenie dotyczy tylko liczby 3, która stoi obok.
+
+### Rozwiązanie
+Najpierw dzielenie i mnożenie od lewej: $12 : 4 = 3$, potem $3 * 3 = 9$. Na końcu $20 - 9 = 11$.
+
+## Znaki [1 pkt] {pf #k02}
+Oceń, czy zdanie jest prawdziwe, czy fałszywe.
+- [P] $(-3) * (-4) = 12$
+- [F] $(-2) * 5 = 10$
+- [P] $5 - (-3) = 8$
+- [F] $(-12) : (-3) = -4$
+
+### Rozwiązanie
+Minus razy minus daje plus, minus razy plus daje minus, a przy dzieleniu jest tak samo. Dlatego $(-2) * 5 = -10$ i $(-12) : (-3) = 4$.
+
+## Wartość bezwzględna [1 pkt] {luka #k03}
+$|-7| =$ ___[7], a $|0| =$ ___[0].
+
+### Rozwiązanie
+Wartość bezwzględna to odległość od zera, więc nigdy nie jest ujemna.
+
+## Podzielność przez 9 [1 pkt] {quiz #k04}
+Która liczba dzieli się przez 9?
+- [x] 7524
+- [ ] 1999
+  > Dziewiątka na końcu nic nie mówi. Liczy się suma cyfr: 1 + 9 + 9 + 9 = 28, a 28 nie dzieli się przez 9.
+- [ ] 7526
+  > Suma cyfr to 20, a 20 nie dzieli się przez 9.
+- [ ] 9001
+  > Dziewiątka na początku nic nie mówi. Suma cyfr to 10.
+
+### Rozwiązanie
+Suma cyfr liczby 7524 to 7 + 5 + 2 + 4 = 18, a 18 dzieli się przez 9.
+
+## Cechy podzielności [1 pkt] {pary #k05}
+Dopasuj cechę podzielności.
+| przez | cecha |
+|---|---|
+| 2 | ostatnia cyfra parzysta |
+| 3 | suma cyfr dzieli się przez 3 |
+| 4 | liczba z dwóch ostatnich cyfr dzieli się przez 4 |
+| 5 | ostatnia cyfra 0 lub 5 |
+| 9 | suma cyfr dzieli się przez 9 |
+
+### Rozwiązanie
+Przez 3 i przez 9 sprawdzamy sumę cyfr. Przez 2, 5 i 10 patrzymy na ostatnią cyfrę, a przez 4 na dwie ostatnie.
+
+## Liczby pierwsze [1 pkt] {pf #k06}
+Oceń, czy zdanie jest prawdziwe, czy fałszywe.
+- [F] 1 jest liczbą pierwszą.
+- [P] 2 jest jedyną parzystą liczbą pierwszą.
+- [F] 51 jest liczbą pierwszą.
+- [P] 97 jest liczbą pierwszą.
+
+### Rozwiązanie
+Liczba 1 ma tylko jeden dzielnik, więc nie jest pierwsza. 51 dzieli się przez 3, bo $51 = 3 * 17$.
+
+## Rozkład na czynniki [1 pkt] {luka #k07}
+W rozkładzie $360 = 2^a * 3^b * 5$ wykładnik $a$ = ___[3], a wykładnik $b$ = ___[2].
+
+### Rozwiązanie
+$360 = 2 * 2 * 2 * 3 * 3 * 5$: dwójka występuje trzy razy, trójka dwa razy.
+
+## NWD [1 pkt] {quiz #k08}
+Ile wynosi $NWD(72, 60)$?
+- [x] $12$
+- [ ] $360$
+  > To jest NWW, czyli najmniejsza wspólna wielokrotność.
+- [ ] $6$
+  > Wspólne czynniki bierzemy w najmniejszych potęgach: $2^2 * 3$, a nie $2 * 3$.
+- [ ] $4320$
+  > To iloczyn $72 * 60$, który jest równy $NWD * NWW$.
+
+### Rozwiązanie
+$72 = 2^3 * 3^2$, $60 = 2^2 * 3 * 5$. Czynniki wspólne w najmniejszych potęgach: $2^2 * 3 = 12$.
+
+## NWW [1 pkt] {luka #k09}
+$NWW(72, 60) =$ ___[360]
+
+### Rozwiązanie
+Wszystkie czynniki w największych potęgach: $2^3 * 3^2 * 5 = 360$.
+
+## NWW krok po kroku [1 pkt] {kolejnosc #k10}
+Ułóż kroki obliczania $NWW(12, 18)$.
+1. $12 = 2^2 * 3$
+2. $18 = 2 * 3^2$
+3. bierzemy wszystkie czynniki w największych potęgach: $2^2 * 3^2$
+4. $NWW(12, 18) = 36$
+
+### Rozwiązanie
+Najpierw rozkład obu liczb, potem wybór czynników, na końcu iloczyn.
+
+## Dzielenie z resztą [1 pkt] {luka #k11}
+$47 : 6 =$ ___[7] reszty ___[5]
+
+### Rozwiązanie
+$47 = 6 * 7 + 5$, a reszta 5 jest mniejsza od dzielnika 6.
+
+## Dni tygodnia [1 pkt] {quiz #k12}
+Dziś jest poniedziałek. Jaki dzień tygodnia będzie za 100 dni?
+- [x] środa
+- [ ] wtorek
+  > Reszta z dzielenia 100 przez 7 to 2, a nie 1.
+- [ ] poniedziałek
+  > 100 nie dzieli się przez 7. Zostają jeszcze 2 dni.
+- [ ] czwartek
+  > Reszta to 2, a nie 3. Sprawdź: $7 * 14 = 98$.
+
+### Rozwiązanie
+$100 = 7 * 14 + 2$. Pełne tygodnie nic nie zmieniają, więc od poniedziałku przesuwamy się o 2 dni.
+
+## Dodawanie ułamków [1 pkt] {luka #k13}
+$\frac{2}{3} + \frac{1}{4} =$ ___[11/12]
+
+### Rozwiązanie
+Wspólny mianownik 12: $\frac{8}{12} + \frac{3}{12} = \frac{11}{12}$.
+
+## Dzielenie ułamków [1 pkt] {quiz #k14}
+Ile wynosi $\frac{3}{4} : \frac{3}{8}$?
+- [x] $2$
+- [ ] $\frac{9}{32}$
+  > To wynik mnożenia. Dzielenie to mnożenie przez odwrotność drugiego ułamka.
+- [ ] $\frac{1}{2}$
+  > Tu odwrócono pierwszy ułamek zamiast drugiego.
+
+### Rozwiązanie
+$\frac{3}{4} : \frac{3}{8} = \frac{3}{4} * \frac{8}{3} = 2$.
+
+## Liczba mieszana [1 pkt] {luka #k15}
+$2\frac{1}{3} =$ ___[7/3]
+
+### Rozwiązanie
+$2 * 3 + 1 = 7$, więc $\frac{7}{3}$.
+
+## Całość z części [1 pkt] {quiz #k16}
+$\frac{3}{5}$ pewnej liczby to 24. Jaka to liczba?
+- [x] $40$
+- [ ] $14,4$
+  > To $\frac{3}{5}$ z 24. Szukamy całości, a nie części.
+- [ ] $8$
+  > To dopiero $\frac{1}{5}$ liczby. Trzeba jeszcze pomnożyć przez 5.
+- [ ] $120$
+  > Tu pomnożono 24 przez 5, ale nie podzielono przez 3.
+
+### Rozwiązanie
+$24 : 3 = 8$ to jedna piąta, a $8 * 5 = 40$ to całość.
+
+## Ułamki i dziesiętne [1 pkt] {pary #k17}
+Dopasuj ułamek dziesiętny.
+| ułamek | dziesiętnie |
+|---|---|
+| $\frac{1}{2}$ | 0,5 |
+| $\frac{1}{4}$ | 0,25 |
+| $\frac{3}{4}$ | 0,75 |
+| $\frac{1}{5}$ | 0,2 |
+| $\frac{1}{8}$ | 0,125 |
+| $\frac{1}{20}$ | 0,05 |
+
+### Rozwiązanie
+Każdy z tych ułamków da się rozszerzyć do mianownika 10, 100 albo 1000.
+
+## Zamiana na dziesiętny [1 pkt] {luka #k18}
+$\frac{3}{8} =$ ___[0,375]
+
+### Rozwiązanie
+$3 : 8 = 0,375$.
+
+## Rozwinięcia okresowe [1 pkt] {pf #k19}
+Oceń, czy zdanie jest prawdziwe, czy fałszywe.
+- [P] $\frac{1}{3} = 0,(3)$
+- [F] $\frac{1}{6} = 0,(6)$
+- [P] $\frac{2}{11} = 0,(18)$
+- [F] $\frac{1}{9} = 0,9$
+
+### Rozwiązanie
+$\frac{1}{6} = 0,1666... = 0,1(6)$, bo jedynka się nie powtarza. $\frac{1}{9} = 0,111... = 0,(1)$.
+
+## Zaokrąglanie [1 pkt] {quiz #k20}
+Zaokrąglij 3,146 do części setnych.
+- [x] 3,15
+- [ ] 3,14
+  > Pierwsza odrzucana cyfra to 6, więc zaokrąglamy w górę.
+- [ ] 3,1
+  > To jest zaokrąglenie do części dziesiątych.
+- [ ] 3,2
+  > Tu zaokrąglono dwa razy: najpierw do 3,15, potem do 3,2. A pytanie dotyczy części setnych.
+
+### Rozwiązanie
+Zostawiamy dwie cyfry po przecinku. Odrzucamy 6, więc 3,14 rośnie do 3,15.
+
+## Zaokrąglanie do setek [1 pkt] {luka #k21}
+2748 ≈ ___[2700] (do setek)
+
+### Rozwiązanie
+Pierwsza odrzucana cyfra to 4, więc zaokrąglamy w dół.
+
+## Pary rzymskie [1 pkt] {pary #k22}
+Dopasuj wartość.
+| zapis | wartość |
+|---|---|
+| IV | 4 |
+| IX | 9 |
+| XL | 40 |
+| XC | 90 |
+| CD | 400 |
+| CM | 900 |
+
+### Rozwiązanie
+Mniejszy znak przed większym oznacza odejmowanie, ale tylko w tych sześciu parach.
+
+## Liczby rzymskie [1 pkt] {luka #k23}
+MCMXCIV = ___[1994], a 2027 = ___[MMXXVII]
+
+### Rozwiązanie
+MCMXCIV = 1000 + 900 + 90 + 4. Rok 2027 to MM + XX + VII.
+
+## Poprawny zapis rzymski [1 pkt] {quiz #k24}
+Który zapis jest poprawny?
+- [x] CXC
+- [ ] IIII
+  > Znak I może stać najwyżej 3 razy z rzędu. Czwórka to IV.
+- [ ] VV
+  > Znak V nigdy nie stoi dwa razy. Dziesięć to X.
+- [ ] IC
+  > Odejmujemy tylko w parach IV, IX, XL, XC, CD, CM. 99 to XCIX.
+
+### Rozwiązanie
+CXC = 100 + 90 = 190.
+
+## Odczytaj MCMXCIV [1 pkt] {kolejnosc #k25}
+Ułóż kolejne kroki odczytu liczby MCMXCIV.
+1. M = 1000
+2. CM = 900
+3. XC = 90
+4. IV = 4
+5. razem 1994
+
+### Rozwiązanie
+Czytamy od lewej i łączymy w pary te znaki, w których mniejszy stoi przed większym.
+
+## Suma kolejnych liczb [2 pkt]
+Uzasadnij, że suma trzech kolejnych liczb naturalnych dzieli się przez 3.
+[odp: 4]
+
+### Rozwiązanie
+Kolejne liczby to $n$, $n + 1$, $n + 2$. Ich suma to $3n + 3 = 3(n + 1)$, a to jest wielokrotność liczby 3.
+
+# Fiszki
+- {#f01} Kolejność działań :: nawiasy, potęgi i pierwiastki, mnożenie i dzielenie od lewej, dodawanie i odejmowanie od lewej
+- {#f02} $a * (b + c)$ :: $a * b + a * c$
+- {#f03} Liczba pierwsza :: ma dokładnie dwa dzielniki: 1 i samą siebie
+- {#f04} Czy 1 jest liczbą pierwszą? :: nie, nie jest ani pierwsza, ani złożona
+- {#f05} NWD :: czynniki wspólne w najmniejszych potęgach
+- {#f06} NWW :: wszystkie czynniki w największych potęgach
+- {#f07} $NWD(a, b) * NWW(a, b)$ :: $a * b$
+- {#f08} Dzielenie z resztą :: $a = b * q + r$, gdzie $0 ≤ r < b$
+- {#f09} Dzielenie ułamków :: mnożenie przez odwrotność drugiego ułamka
+- {#f10} Podzielność przez 4 :: liczba z dwóch ostatnich cyfr dzieli się przez 4
+- {#f11} $\frac{1}{8}$ :: 0,125
+- {#f12} Zaokrąglanie :: patrzymy na pierwszą odrzucaną cyfrę: od 0 do 4 w dół, od 5 do 9 w górę
+- {#f13} Wartość bezwzględna :: odległość liczby od zera na osi liczbowej
+- {#f14} CM :: 900
+
+</script>
+<script>
+"use strict";
+/* ============ formatowanie tekstu i wzorów ============ */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function formula(src){
+  let i=0;
+  const letters=()=>{let w='';while(i<src.length&&/[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]/.test(src[i]))w+=src[i++];return w.length===1?'<i>'+esc(w)+'</i>':esc(w);};
+  function sym(c){if(c==='*')return '·';if(c==='-')return '−';return esc(c);}
+  function group(){
+    while(src[i]===' ')i++;
+    if(src[i]==='{'){i++;const h=seq('}');i++;return h;}
+    if(i>=src.length)return '';
+    if(src[i]==='\\')return command();
+    if(/[A-Za-z]/.test(src[i])){const c=src[i++];return '<i>'+c+'</i>';}
+    return sym(src[i++]);
+  }
+  function command(){
+    i++;let name='';while(i<src.length&&/[A-Za-z]/.test(src[i]))name+=src[i++];
+    if(name==='frac'){const a=group(),b=group();return '<span class="fr"><span class="nu">'+a+'</span><span class="de">'+b+'</span></span>';}
+    if(name==='sqrt'){const a=group();return '<span class="sq">√<span class="rad">'+a+'</span></span>';}
+    if(name==='pi')return 'π';
+    return esc('\\'+name);
+  }
+  function seq(stop){
+    let out='';
+    while(i<src.length&&src[i]!==stop){
+      const c=src[i];
+      if(c==='{'){i++;out+=seq('}');i++;continue;}
+      if(c==='^'){i++;out+='<sup>'+group()+'</sup>';continue;}
+      if(c==='_'){i++;out+='<sub>'+group()+'</sub>';continue;}
+      if(c==='\\'){out+=command();continue;}
+      if(c===' '){let r=0;while(src[i]===' '){r++;i++;}out+=r>1?'\u2003':' ';continue;}
+      if(/[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]/.test(c)){out+=letters();continue;}
+      out+=sym(c);i++;
+    }
+    return out;
+  }
+  return seq(null);
+}
+function textFmt(p){
+  let h=esc(p);
+  h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\*)/g,'$1<em>$2</em>');
+  h=h.replace(/ - /g,' – ');
+  return h;
+}
+function inline(s){
+  const parts=String(s).split('$');let out='';
+  parts.forEach((p,k)=>{out+= k%2 ? '<span class="f">'+formula(p)+'</span>' : textFmt(p);});
+  return out;
+}
+/* ============ parser pliku tematu ============ */
+function splitRow(l){return l.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim());}
+const isSep=r=>r.every(c=>/^:?-{2,}:?$/.test(c));
+function parseBlocks(ls){
+  const out=[];let k=0;
+  const special=/^(\s*\$\$|\s*\||>|- |\d+\.\s)/;
+  while(k<ls.length){
+    const l=ls[k];
+    if(!l.trim()){k++;continue;}
+    let m;
+    if((m=l.match(/^\s*\$\$(.*)\$\$\s*$/))){out.push({type:'math',src:m[1].trim()});k++;continue;}
+    if(/^\s*\|/.test(l)){const rows=[];while(k<ls.length&&/^\s*\|/.test(ls[k])){rows.push(splitRow(ls[k]));k++;}
+      const body=rows.filter(r=>!isSep(r));out.push({type:'table',head:body[0]||[],rows:body.slice(1)});continue;}
+    if(/^>\s?/.test(l)){const q=[];while(k<ls.length&&/^>\s?/.test(ls[k])){q.push(ls[k].replace(/^>\s?/,''));k++;}out.push({type:'quote',text:q.join(' ')});continue;}
+    if(/^- /.test(l)){const it=[];while(k<ls.length&&/^- /.test(ls[k])){it.push(ls[k].slice(2));k++;}out.push({type:'ul',items:it});continue;}
+    if(/^\d+\.\s/.test(l)){const it=[];while(k<ls.length&&/^\d+\.\s/.test(ls[k])){it.push(ls[k].replace(/^\d+\.\s/,''));k++;}out.push({type:'ol',items:it});continue;}
+    const p=[l];k++;while(k<ls.length&&ls[k].trim()&&!special.test(ls[k])){p.push(ls[k]);k++;}
+    out.push({type:'p',text:p.join(' ')});
+  }
+  return out;
+}
+function renderBlocks(bl){
+  return bl.map(b=>{
+    switch(b.type){
+      case 'math':return '<div class="mathblock"><span class="f">'+formula(b.src)+'</span></div>';
+      case 'table':return '<div class="tablewrap"><table><thead><tr>'+b.head.map(c=>'<th>'+inline(c)+'</th>').join('')+'</tr></thead><tbody>'+b.rows.map(r=>'<tr>'+r.map(c=>'<td>'+inline(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+      case 'quote':return '<blockquote>'+inline(b.text)+'</blockquote>';
+      case 'ul':return '<ul>'+b.items.map(x=>'<li>'+inline(x)+'</li>').join('')+'</ul>';
+      case 'ol':return '<ol>'+b.items.map(x=>'<li>'+inline(x)+'</li>').join('')+'</ol>';
+      default:return '<p>'+inline(b.text)+'</p>';
+    }
+  }).join('');
+}
+const md=lines=>renderBlocks(parseBlocks(lines));
+function hash(s){let h=5381;for(let k=0;k<s.length;k++)h=((h<<5)+h+s.charCodeAt(k))|0;return (h>>>0).toString(36);}
+const trimEnds=a=>{a=a.slice();while(a.length&&!a[0].trim())a.shift();while(a.length&&!a[a.length-1].trim())a.pop();return a;};
+const CHECKABLE=['quiz','pf','luka','kolejnosc','pary'];
+
+function parsePackage(src){
+  const lines=src.replace(/\r/g,'').replace(/^\s+/,'').split('\n');const warn=[];
+  let i=0;const meta={};
+  if(lines[0]&&lines[0].trim()==='---'){i=1;while(i<lines.length&&lines[i].trim()!=='---'){const m=lines[i].match(/^(\w+):\s*(.*)$/);if(m)meta[m[1]]=m[2].trim();i++;}i++;}
+  const sec={};let cur=null;
+  for(;i<lines.length;i++){const l=lines[i];const m=l.match(/^# (.+)$/);if(m){cur=m[1].trim().toLowerCase();sec[cur]=[];continue;}if(cur)sec[cur].push({t:l,n:i+1});}
+  if(!meta.tytul)warn.push('Brak pola „tytul” w nagłówku.');
+  const id=meta.id||('pakiet-'+hash(meta.tytul||src.slice(0,200)));
+  if(!meta.id)warn.push('Brak pola „id” w nagłówku. Postęp zapisze się pod identyfikatorem zastępczym.');
+  // kompendium
+  const chapters=[];let ch=null;
+  for(const {t} of (sec['kompendium']||[])){const m=t.match(/^## (.+)$/);if(m){ch={title:m[1].trim(),lines:[]};chapters.push(ch);continue;}if(!ch){if(!t.trim())continue;ch={title:'',lines:[]};chapters.push(ch);}ch.lines.push(t);}
+  // zadania
+  const raw=[];let tk=null;
+  for(const {t,n} of (sec['zadania']||[])){
+    const m=t.match(/^## (.+)$/);
+    if(m){tk={head:m[1].trim(),line:n,body:[],sol:[],inSol:false};raw.push(tk);continue;}
+    if(!tk)continue;
+    if(/^###\s+Rozwiązanie/.test(t)){tk.inSol=true;continue;}
+    (tk.inSol?tk.sol:tk.body).push(t);
+  }
+  const tasks=raw.map(x=>buildTask(x,warn));
+  // fiszki
+  const cards=[];
+  for(const {t,n} of (sec['fiszki']||[])){
+    if(!t.trim())continue;
+    const m=t.match(/^- \{#([^}\s]+)\}\s*(.*?)\s*::\s*(.*)$/);
+    if(m)cards.push({id:'f:'+m[1],front:m[2],back:m[3]});
+    else warn.push('Linia '+n+': fiszka nie ma postaci „- {#id} przód :: tył”.');
+  }
+  const seen=new Set();
+  for(const x of [...tasks,...cards]){if(seen.has(x.id))warn.push('Powtórzony identyfikator: '+x.id.replace(/^f:/,'')+'.');seen.add(x.id);}
+  return {id,meta,chapters,tasks,cards,warn,src};
+}
+function buildTask(x,warn){
+  let h=x.head,typ=null,id=null,pkt=1;
+  const tm=h.match(/\{([^}]*)\}\s*$/);
+  if(tm){h=h.slice(0,tm.index).trim();for(const tok of tm[1].trim().split(/\s+/)){if(tok.startsWith('#'))id=tok.slice(1);else if(tok)typ=tok;}}
+  const pm=h.match(/\[(\d+)\s*pkt\]\s*$/);if(pm){pkt=+pm[1];h=h.slice(0,pm.index).trim();}
+  const body=trimEnds(x.body),bt=body.join('\n');
+  if(!typ){if(/\[odp:/.test(bt))typ='pisemne';else if(/^- \[[ x]\]/m.test(bt))typ='quiz';else if(/___\[/.test(bt))typ='luka';else typ='pisemne';}
+  const where='Zadanie „'+h+'” (linia '+x.line+')';
+  const t={title:h,typ,id:id||('auto-'+hash(x.head+bt)),pkt,line:x.line,solution:trimEnds(x.sol)};
+  if(!id&&CHECKABLE.includes(typ))warn.push(where+': brak identyfikatora #.');
+  if(!t.solution.length)warn.push(where+': brak rozwiązania.');
+  if(typ==='quiz'){
+    const prompt=[],opts=[];
+    for(const l of body){
+      let m;
+      if((m=l.match(/^- \[( |x|X)\]\s*(.*)$/))){opts.push({text:m[2],correct:m[1]!==' ',fb:''});continue;}
+      if(opts.length&&(m=l.match(/^\s{2,}>\s?(.*)$/))){const o=opts[opts.length-1];o.fb=(o.fb?o.fb+' ':'')+m[1];continue;}
+      if(!opts.length)prompt.push(l);
+    }
+    t.prompt=trimEnds(prompt);t.options=opts;
+    const nc=opts.filter(o=>o.correct).length;
+    if(opts.length<2)warn.push(where+': quiz potrzebuje co najmniej dwóch odpowiedzi.');
+    if(nc!==1)warn.push(where+': quiz musi mieć dokładnie jedną poprawną odpowiedź, a ma '+nc+'.');
+    const texts=opts.map(o=>o.text.trim());if(new Set(texts).size!==texts.length)warn.push(where+': dwie odpowiedzi mają ten sam tekst.');
+  }else if(typ==='pf'){
+    const prompt=[],st=[];
+    for(const l of body){const m=l.match(/^- \[(P|F)\]\s*(.*)$/);if(m)st.push({text:m[2],val:m[1]});else if(!st.length)prompt.push(l);}
+    t.prompt=trimEnds(prompt);t.statements=st;
+    if(!st.length)warn.push(where+': brak zdań [P] lub [F].');
+  }else if(typ==='luka'){
+    t.lines=body;t.answers=[];
+    body.forEach(l=>{for(const m of l.matchAll(/___\[([^\]]*)\]/g))t.answers.push(m[1].split('|').map(s=>s.trim()));});
+    if(!t.answers.length)warn.push(where+': brak luk ___[odpowiedź].');
+  }else if(typ==='kolejnosc'){
+    const prompt=[],items=[];
+    for(const l of body){const m=l.match(/^\d+\.\s+(.*)$/);if(m)items.push(m[1]);else if(!items.length)prompt.push(l);}
+    t.prompt=trimEnds(prompt);t.items=items;
+    if(items.length<2)warn.push(where+': kolejność potrzebuje co najmniej dwóch kroków.');
+  }else if(typ==='pary'){
+    const prompt=[],rows=[];
+    for(const l of body){if(/^\s*\|/.test(l))rows.push(splitRow(l));else if(!rows.length)prompt.push(l);}
+    const r=rows.filter(x=>!isSep(x));
+    t.prompt=trimEnds(prompt);t.head=r[0]||[];t.pairs=r.slice(1).map(x=>[x[0]||'',x[1]||'']);
+    if(t.pairs.length<2)warn.push(where+': pary potrzebują co najmniej dwóch wierszy.');
+    const rv=t.pairs.map(p=>p[1]);if(new Set(rv).size!==rv.length)warn.push(where+': prawa kolumna ma powtórzenia, dopasowanie byłoby niejednoznaczne.');
+  }else if(typ==='pisemne'){
+    t.prompt=body.filter(l=>!/^\[odp:/.test(l.trim()));
+  }else{
+    warn.push(where+': nieznany typ „'+typ+'”. Zadanie pominięte w aplikacji.');
+  }
+  return t;
+}
+/* ============ stan i zapis ============ */
+const KEY='nauka:v1';
+let storageOK=false;
+let S=null;
+function loadState(){
+  try{localStorage.setItem('nauka:probe','1');storageOK=localStorage.getItem('nauka:probe')==='1';const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):null;}
+  catch(e){storageOK=false;return null;}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){storageOK=false;}}
+S=loadState()||{v:1,items:{},packages:{},launches:0,first:null,current:null};
+S.launches=(S.launches||0)+1;S.first=S.first||new Date().toISOString();S.items=S.items||{};S.packages=S.packages||{};
+save();
+
+/* ============ pakiety ============ */
+let PKGS={};
+function loadPackages(){
+  PKGS={};
+  const add=(src,origin)=>{const p=parsePackage(src);p.origin=origin;const old=PKGS[p.id];if(!old||(p.meta.wersja||'')>=(old.meta.wersja||''))PKGS[p.id]=p;};
+  document.querySelectorAll('script.paczka').forEach(s=>add(s.textContent.replace(/<\\\/script/g,'</script'),'wbudowany'));
+  for(const id in S.packages)add(S.packages[id],'wgrany');
+  if(!S.current||!PKGS[S.current])S.current=Object.keys(PKGS)[0]||null;
+}
+const P=()=>PKGS[S.current];
+const key=id=>S.current+'/'+id;
+const st=id=>S.items[key(id)]||null;
+function record(id,ok){
+  const k=key(id);const s=S.items[k]||{n:0,ok:0,box:0,last:null,t:0};
+  s.n++;if(ok)s.ok++;s.box=ok?Math.min(5,s.box+1):0;s.last=ok?1:0;s.t=Date.now();S.items[k]=s;save();
+}
+const checkable=()=>P().tasks.filter(t=>CHECKABLE.includes(t.typ));
+const mastered=x=>{const s=st(x.id);return s&&s.box>=2;};
+
+/* ============ narzędzia UI ============ */
+const app=document.getElementById('app');
+function h(tag,cls,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+function shuffle(a){a=a.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]];}return a;}
+function shuffledNot(a,same){if(a.length<2)return a.slice();let r;for(let k=0;k<20;k++){r=shuffle(a);if(!same(r))return r;}return r;}
+function norm(s){return String(s).toLowerCase().replace(/\s+/g,'').replace(/\./g,',').replace(/−/g,'-');}
+function pl(n,a,b,c){const d=n%10,e=n%100;return n+' '+(n===1?a:(d>=2&&d<=4&&!(e>=12&&e<=14))?b:c);}
+function backBtn(){const b=h('button','back','‹ Wróć');b.onclick=home;return b;}
+function toTop(){window.scrollTo(0,0);}
+
+/* ============ ekran główny ============ */
+function home(){
+  toTop();app.innerHTML='';
+  const p=P();
+  if(!p){app.append(h('h1',null,'Brak tematów'),h('p',null,'Dodaj plik tematu przyciskiem poniżej.'));app.append(footer());return;}
+  app.append(h('p','subject',esc(p.meta.przedmiot||'')+(p.meta.klasa?', klasa '+esc(p.meta.klasa):'')),h('h1',null,inline(p.meta.tytul||'Temat')));
+  if(p.meta.tematyka)app.append(h('p','subject',inline(p.meta.tematyka)));
+  if(Object.keys(PKGS).length>1){
+    const sel=h('select');for(const id in PKGS){const o=h('option',null,esc(PKGS[id].meta.tytul||id));o.value=id;if(id===S.current)o.selected=true;sel.append(o);}
+    sel.onchange=()=>{S.current=sel.value;save();home();};app.append(sel);
+  }
+  const all=[...checkable(),...p.cards];const done=all.filter(mastered).length;
+  const prog=h('div','progress');prog.innerHTML='<div class="bar"><span style="width:'+(all.length?Math.round(100*done/all.length):0)+'%"></span></div><small>Opanowane: '+done+' z '+all.length+'</small>';
+  app.append(prog);
+  const errors=checkable().filter(t=>{const s=st(t.id);return s&&s.last===0;});
+  const errCards=p.cards.filter(c=>{const s=st(c.id);return s&&s.last===0;});
+  const written=p.tasks.filter(t=>t.typ==='pisemne');
+  const menu=h('div','menu');
+  const item=(label,count,fn,dis)=>{const b=h('button',null,'<span>'+label+'</span><span>'+count+'</span>');b.onclick=fn;if(dis)b.disabled=true;menu.append(b);};
+  item('Kompendium',pl(p.chapters.length,'dział','działy','działów'),showDoc,!p.chapters.length);
+  item('Fiszki',pl(p.cards.length,'karta','karty','kart'),()=>flash(p.cards),!p.cards.length);
+  item('Ćwiczenia',pl(checkable().length,'zadanie','zadania','zadań'),()=>session('cw',pickPractice()),!checkable().length);
+  item('Powtórka błędów',(errors.length+errCards.length)+' do poprawy',()=>{errors.length?session('cw',shuffle(errors)):flash(errCards);},!(errors.length+errCards.length));
+  item('Sprawdzian',pl(Math.min(10,checkable().length),'zadanie','zadania','zadań')+', ocena na końcu',()=>session('test',shuffle(checkable()).slice(0,10)),!checkable().length);
+  item('Na kartce',pl(written.length,'zadanie','zadania','zadań'),showWritten,!written.length);
+  app.append(menu);
+  if(p.warn.length){const w=h('div','warn');w.innerHTML='<strong>Uwagi do pliku tematu</strong><br>'+p.warn.map(esc).join('<br>');app.append(w);}
+  app.append(footer());
+}
+function footer(){
+  const f=h('div','foot');
+  const s=h('div','status'+(storageOK?'':' off'));
+  s.textContent=storageOK
+    ?'Zapis postępu działa. To uruchomienie nr '+S.launches+', pierwsze '+new Date(S.first).toLocaleDateString('pl-PL')+'.'
+    :'Zapis postępu nie działa w tym miejscu. Postęp zniknie po zamknięciu.';
+  f.append(s);
+  const links=h('div','links');
+  const l=(t,fn)=>{const b=h('button',null,t);b.onclick=fn;links.append(b);};
+  l('Zapisz postęp do pliku',exportProgress);
+  l('Dodaj temat z pliku',()=>document.getElementById('plik').click());
+  l('Wyzeruj postęp tematu',()=>{if(confirm('Wyzerować postęp w tym temacie?')){for(const k in S.items)if(k.startsWith(S.current+'/'))delete S.items[k];save();home();}});
+  f.append(links);return f;
+}
+document.getElementById('plik').onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();r.onload=()=>{const p=parsePackage(String(r.result));S.packages[p.id]=String(r.result);S.current=p.id;save();loadPackages();home();};r.readAsText(file);e.target.value='';
+};
+function exportProgress(){
+  const data=JSON.stringify({eksport:new Date().toISOString(),stan:{items:S.items,launches:S.launches,first:S.first}},null,1);
+  try{const a=h('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='postep-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();}
+  catch(e){toTop();app.innerHTML='';app.append(backBtn(),h('p',null,'Skopiuj ten tekst i zapisz go w notatkach:'));const t=h('textarea');t.value=data;app.append(t);}
+}
+/* ============ kompendium i zadania pisemne ============ */
+function showDoc(){
+  toTop();app.innerHTML='';const p=P();
+  app.append(backBtn(),h('h1',null,inline(p.meta.tytul||'')));
+  const toc=h('nav','toc');p.chapters.forEach((c,k)=>{if(c.title)toc.innerHTML+='<a href="#r'+k+'">'+inline(c.title)+'</a>';});app.append(toc);
+  const d=h('div','doc serif');
+  p.chapters.forEach((c,k)=>{d.innerHTML+=(c.title?'<h2 id="r'+k+'">'+inline(c.title)+'</h2>':'')+md(c.lines);});
+  app.append(d);
+}
+function showWritten(){
+  toTop();app.innerHTML='';const p=P();
+  app.append(backBtn(),h('h1',null,'Na kartce'),h('p','subject','Te zadania wymagają zapisu rozumowania. Rozwiąż je w zeszycie, a potem porównaj z rozwiązaniem.'));
+  p.tasks.filter(t=>t.typ==='pisemne').forEach(t=>{
+    const c=h('div','task');c.innerHTML='<h3>'+inline(t.title)+', '+t.pkt+' pkt</h3><div class="prompt">'+md(t.prompt)+'</div><details><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details>';
+    app.append(c);
+  });
+}
+/* ============ rendery zadań ============ */
+function rQuiz(t,box){
+  box.innerHTML='<div class="prompt">'+md(t.prompt)+'</div>';
+  const list=h('div','opts');let sel=null,locked=false;
+  const opts=shuffle(t.options);
+  opts.forEach(o=>{const b=h('button','opt',inline(o.text));b.type='button';o._b=b;b.onclick=()=>{if(locked)return;sel=o;opts.forEach(x=>x._b.classList.toggle('sel',x===o));};list.append(b);});
+  box.append(list);
+  return ()=>{
+    if(!sel)return {answered:false,msg:'Wybierz odpowiedź.'};
+    locked=true;opts.forEach(o=>{o._b.classList.remove('sel');if(o.correct)o._b.classList.add('good');else if(o===sel)o._b.classList.add('bad');});
+    return {answered:true,ok:sel.correct,html:(!sel.correct&&sel.fb)?'<p class="why">'+inline(sel.fb)+'</p>':''};
+  };
+}
+function rPF(t,box){
+  box.innerHTML=t.prompt.length?'<div class="prompt">'+md(t.prompt)+'</div>':'';
+  const wrap=h('div','pf');const ans=t.statements.map(()=>null);let locked=false;const rows=[];
+  t.statements.forEach((s,k)=>{
+    const row=h('div','row','<span>'+inline(s.text)+'</span>');const bs=h('div');
+    ['P','F'].forEach(v=>{const b=h('button',null,v==='P'?'Prawda':'Fałsz');b.type='button';b.onclick=()=>{if(locked)return;ans[k]=v;[...bs.children].forEach(x=>x.classList.toggle('sel',x===b));};bs.append(b);});
+    row.append(bs);wrap.append(row);rows.push(row);
+  });
+  box.append(wrap);
+  return ()=>{
+    if(ans.some(a=>a===null))return {answered:false,msg:'Oceń każde zdanie.'};
+    locked=true;let ok=true;
+    t.statements.forEach((s,k)=>{const good=ans[k]===s.val;if(!good)ok=false;rows[k].classList.add(good?'good':'bad');[...rows[k].querySelectorAll('button')].forEach(b=>b.classList.remove('sel'));});
+    return {answered:true,ok,html:ok?'':'<p class="why">Punkt jest tylko za komplet, tak jak na egzaminie. '+t.statements.map(s=>inline(s.text)+': '+(s.val==='P'?'prawda':'fałsz')).join('; ')+'.</p>'};
+  };
+}
+function rLuka(t,box){
+  const inputs=[];let n=0;
+  const html=t.lines.filter(l=>l.trim()).map(l=>{
+    const parts=l.split(/___\[[^\]]*\]/);
+    return '<p>'+parts.map((p,k)=>inline(p)+(k<parts.length-1?'<input class="gap" data-k="'+(n++)+'" autocomplete="off" autocapitalize="off" spellcheck="false">':'')).join('')+'</p>';
+  }).join('');
+  box.innerHTML='<div class="prompt">'+html+'</div>';
+  box.querySelectorAll('input.gap').forEach(inp=>{const a=t.answers[+inp.dataset.k]||[''];inp.size=Math.max(3,Math.max(...a.map(x=>x.length))+1);inputs.push(inp);});
+  return ()=>{
+    if(inputs.some(i=>!i.value.trim()))return {answered:false,msg:'Uzupełnij wszystkie luki.'};
+    let ok=true;const wrong=[];
+    inputs.forEach((inp,k)=>{const good=t.answers[k].some(a=>norm(a)===norm(inp.value));inp.readOnly=true;inp.classList.add(good?'good':'bad');if(!good){ok=false;wrong.push(t.answers[k][0]);}});
+    return {answered:true,ok,html:ok?'':'<p class="why">Poprawnie: '+t.answers.map(a=>esc(a[0])).join(', ')+'.</p>'};
+  };
+}
+function rOrder(t,box){
+  box.innerHTML=t.prompt.length?'<div class="prompt">'+md(t.prompt)+'</div>':'';
+  const items=t.items.map((x,k)=>({k,x}));
+  let pool=shuffledNot(items,r=>r.every((o,k)=>o.k===k));const chosen=[];let locked=false;
+  const zone=h('div','zone');zone.dataset.empty='Stukaj kroki w dobrej kolejności';
+  const poolEl=h('div','pool');
+  function draw(){
+    zone.innerHTML='';poolEl.innerHTML='';
+    chosen.forEach((o,k)=>{const b=h('button','chip',(k+1)+'. '+inline(o.x));b.type='button';b.onclick=()=>{if(locked)return;chosen.splice(k,1);pool.push(o);draw();};o._b=b;zone.append(b);});
+    pool.forEach((o,k)=>{const b=h('button','chip',inline(o.x));b.type='button';b.onclick=()=>{if(locked)return;pool.splice(k,1);chosen.push(o);draw();};poolEl.append(b);});
+  }
+  draw();box.append(zone,poolEl);
+  return ()=>{
+    if(pool.length)return {answered:false,msg:'Ułóż wszystkie kroki.'};
+    locked=true;const ok=chosen.every((o,k)=>o.k===k);
+    chosen.forEach((o,k)=>o._b.classList.add(o.k===k?'good':'bad'));
+    return {answered:true,ok,html:ok?'':'<p class="why">Dobra kolejność:</p><ol>'+t.items.map(x=>'<li>'+inline(x)+'</li>').join('')+'</ol>'};
+  };
+}
+function rPairs(t,box){
+  box.innerHTML=t.prompt.length?'<div class="prompt">'+md(t.prompt)+'</div>':'';
+  const L=t.pairs.map((p,k)=>({k,x:p[0],tag:String.fromCharCode(65+k)}));
+  const R=shuffledNot(t.pairs.map((p,k)=>({k,x:p[1]})),r=>r.every((o,k)=>o.k===k));
+  const match=new Map();let pick=null,locked=false;
+  const grid=h('div','pairs');const cl=h('div','col'),cr=h('div','col');grid.append(cl,cr);
+  if(t.head.length===2){/* nagłówki kolumn */}
+  function draw(){
+    cl.innerHTML='';cr.innerHTML='';
+    L.forEach(l=>{const b=h('button','chip'+(match.has(l.k)?' on':'')+(pick===l?' sel':''),'<span class="tag">'+l.tag+'</span>'+inline(l.x));b.type='button';l._b=b;
+      b.onclick=()=>{if(locked)return;if(match.has(l.k)){match.delete(l.k);pick=null;}else pick=(pick===l?null:l);draw();};cl.append(b);});
+    R.forEach(r=>{let owner=null;for(const [lk,rr] of match)if(rr===r)owner=L[lk];
+      const b=h('button','chip'+(owner?' on':''),'<span class="tag">'+(owner?owner.tag:'')+'</span>'+inline(r.x));b.type='button';r._b=b;
+      b.onclick=()=>{if(locked)return;if(pick){for(const [lk,rr] of [...match])if(rr===r)match.delete(lk);match.set(pick.k,r);pick=null;}else if(owner)match.delete(owner.k);draw();};cr.append(b);});
+  }
+  draw();
+  const hint=h('p','counter','Stuknij element z lewej, potem pasujący z prawej.');
+  box.append(hint,grid);
+  return ()=>{
+    if(match.size<L.length)return {answered:false,msg:'Połącz wszystkie pary.'};
+    locked=true;let ok=true;
+    L.forEach(l=>{const good=match.get(l.k).k===l.k;if(!good)ok=false;l._b.classList.add(good?'good':'bad');match.get(l.k)._b.classList.add(good?'good':'bad');});
+    return {answered:true,ok,html:ok?'':'<p class="why">Dobre pary: '+t.pairs.map(p=>inline(p[0])+' z '+inline(p[1])).join('; ')+'.</p>'};
+  };
+}
+const RENDER={quiz:rQuiz,pf:rPF,luka:rLuka,kolejnosc:rOrder,pary:rPairs};
+/* ============ sesje ============ */
+function pickPractice(){
+  const ts=checkable();
+  const score=t=>{const s=st(t.id);if(!s)return 1;if(s.last===0)return 0;return 1+s.box;};
+  return shuffle(ts).sort((a,b)=>score(a)-score(b)).slice(0,10);
+}
+function session(mode,list){
+  let idx=0;const results=[];
+  function next(){
+    if(idx>=list.length)return finish();
+    toTop();app.innerHTML='';
+    const t=list[idx];
+    app.append(backBtn(),h('p','counter',(mode==='test'?'Sprawdzian, zadanie ':'Zadanie ')+(idx+1)+' z '+list.length));
+    const card=h('div','task');card.append(h('h3',null,inline(t.title)+(mode==='test'?', '+t.pkt+' pkt':'')));
+    const box=h('div');card.append(box);
+    const check=RENDER[t.typ](t,box);
+    const acts=h('div','actions');const go=h('button','btn',mode==='test'?'Dalej':'Sprawdź');go.type='button';acts.append(go);
+    const msg=h('p','hint');card.append(acts,msg);app.append(card);
+    go.onclick=()=>{
+      const r=check();
+      if(!r.answered){msg.textContent=r.msg;return;}
+      msg.textContent='';record(t.id,r.ok);results.push({t,r});
+      if(mode==='test'){idx++;next();return;}
+      acts.remove();
+      const v=h('div','verdict');
+      v.innerHTML='<div class="head '+(r.ok?'ok':'no')+'">'+(r.ok?'Dobrze.':'Nie tym razem.')+'</div>'+r.html+
+        '<details'+(r.ok?'':' open')+'><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details>';
+      const a2=h('div','actions');const nb=h('button','btn',idx+1<list.length?'Dalej':'Zakończ');nb.type='button';nb.onclick=()=>{idx++;next();};a2.append(nb);v.append(a2);
+      card.append(v);nb.focus({preventScroll:true});v.scrollIntoView({behavior:'smooth',block:'nearest'});
+    };
+  }
+  function finish(){
+    toTop();app.innerHTML='';
+    const got=results.filter(x=>x.r.ok).reduce((s,x)=>s+x.t.pkt,0),max=results.reduce((s,x)=>s+x.t.pkt,0);
+    app.append(h('h1',null,mode==='test'?'Wynik sprawdzianu':'Koniec serii'),h('p','summary-score',got+' / '+max+(mode==='test'?' pkt':'')));
+    if(mode==='test'){
+      results.forEach(({t,r})=>{const c=h('div','task');c.innerHTML='<h3>'+inline(t.title)+', '+(r.ok?t.pkt:0)+' z '+t.pkt+' pkt</h3>'+(r.ok?'<p class="verdict head ok">Dobrze.</p>':'<div class="verdict"><div class="head no">Źle.</div>'+r.html+'<details><summary>Rozwiązanie</summary><div class="solution">'+md(t.solution)+'</div></details></div>');app.append(c);});
+    }
+    const a=h('div','actions');const b1=h('button','btn','Na początek');b1.onclick=home;a.append(b1);
+    const wrong=results.filter(x=>!x.r.ok).map(x=>x.t);
+    if(wrong.length){const b2=h('button','btn ghost','Popraw błędy ('+wrong.length+')');b2.onclick=()=>session('cw',shuffle(wrong));a.append(b2);}
+    app.append(a);
+  }
+  next();
+}
+function flash(cards){
+  const q=shuffle(cards).sort((a,b)=>((st(a.id)||{box:-1}).box)-((st(b.id)||{box:-1}).box));
+  let idx=0,known=0;
+  function next(){
+    toTop();app.innerHTML='';
+    if(idx>=q.length){app.append(h('h1',null,'Koniec fiszek'),h('p','summary-score',known+' / '+q.length));const b=h('button','btn','Na początek');b.onclick=home;app.append(b);return;}
+    const c=q[idx];
+    app.append(backBtn(),h('p','counter','Fiszka '+(idx+1)+' z '+q.length));
+    const card=h('div','card','<div class="front">'+inline(c.front)+'</div>');
+    const acts=h('div','actions');acts.style.justifyContent='center';
+    const show=h('button','btn','Pokaż odpowiedź');show.type='button';acts.append(show);card.append(acts);app.append(card);
+    show.onclick=()=>{
+      acts.remove();card.append(h('div','backside',inline(c.back)));
+      const a2=h('div','actions');a2.style.justifyContent='center';
+      const no=h('button','btn ghost','Jeszcze nie');const yes=h('button','btn','Umiem');
+      no.onclick=()=>{record(c.id,false);idx++;next();};yes.onclick=()=>{record(c.id,true);known++;idx++;next();};
+      a2.append(no,yes);card.append(a2);
+    };
+  }
+  next();
+}
+loadPackages();save();home();
+</script>
+</body>
+</html>
