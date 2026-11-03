@@ -195,6 +195,38 @@ Potwierdzone w podstawie bez zastrzeżeń: system rzymski do 3000 (IV–VI I.5),
 
 Temat figur ma wersję 2026-11-03, temat liczb też (zadanie `k26` z fazy 1).
 
+## Instrukcja dla rodzica: prawdziwy telefon z Androidem
+
+Potrzebne: telefon z Chrome, internet na czas instalacji, stara wersja aplikacji otwierana z pliku (ta, na której jest dotychczasowy postęp).
+
+**1. Zapisz postęp ze starej wersji.**
+Otwórz starą aplikację z pliku, tak jak dotąd. Przewiń ekran na sam dół i stuknij „Zapisz postęp do pliku”. Plik `postep-RRRR-MM-DD.json` trafi do folderu Pobrane. Jeśli zamiast pobierania pojawi się tekst, zaznacz go w całości, skopiuj i wklej do notatki albo wyślij sobie wiadomością.
+
+**2. Otwórz aplikację z internetu.**
+W Chrome wpisz adres `https://akku1906.github.io/nauka/`. Wybierz „Klasa 8”. Na liście powinny być „Liczby i działania” i „Figury płaskie”. Odczekaj kilka sekund na liście, żeby aplikacja pobrała tematy do pamięci.
+
+**3. Zainstaluj.**
+Menu Chrome (trzy kropki w prawym górnym rogu), potem „Zainstaluj aplikację” (w części telefonów: „Dodaj do ekranu głównego”, a potem „Zainstaluj”). Na ekranie głównym pojawi się ikona „Nauka”: zielony ptaszek na kartce w kratkę. Od teraz otwieraj aplikację tą ikoną. Otwiera się bez paska adresu.
+
+**4. Wczytaj postęp.**
+W zainstalowanej aplikacji przewiń na dół i stuknij „Wczytaj postęp z pliku”. Wybierz plik z kroku 1 z folderu Pobrane. Aplikacja pokaże, ile wpisów jest w pliku. Stuknij „Zastąp” (w świeżej instalacji nie ma czego łączyć). Sprawdź pasek stanu na dole: numer uruchomienia powinien kontynuować liczenie ze starej wersji, a w temacie „Powtórka błędów” powinny być dawne błędy.
+Jeśli telefon nie pozwala wybrać pliku `.json` (jest wyszarzony): „Ustawienia”, „Wklej postęp jako tekst”, wklej tekst z kroku 1, „Wczytaj tekst”.
+
+**5. Sprawdź pasek stanu.**
+Na dole listy tematów: „Zapis postępu działa. To uruchomienie nr …, pierwsze …. Pamięć trwała: tak/nie. Wersja ….” Po instalacji Chrome zwykle przyznaje pamięć trwałą („tak”). Przy „nie” postęp i tak się zapisuje, ale przeglądarka mogłaby go usunąć, gdy w telefonie skończy się miejsce. Wtedy warto co jakiś czas robić „Zapisz postęp do pliku”.
+
+**6. Test bez internetu.**
+Otwórz aplikację raz z internetem i zamknij ją. Włącz tryb samolotowy. Otwórz aplikację ikoną. Lista ma pokazać oba tematy. Otwórz „Figury płaskie”, potem „Kompendium”: rysunki mają być widoczne. Zrób po jednym zadaniu w każdym temacie. Wyłącz tryb samolotowy.
+
+**7. Test przycisku wstecz.**
+W zadaniu stuknij systemowe „wstecz”: aplikacja ma wrócić do ekranu tematu, a nie się zamknąć.
+
+**8. Test aktualizacji.**
+Aktualizacja tematu: gdy w repozytorium zmieni się plik tematu (np. w nowej sesji poproszę o drobną poprawkę), otwórz aplikację z internetem. Nowa treść pojawi się od razu albo, przy słabym zasięgu, przy następnym otwarciu. Postęp zostaje.
+Aktualizacja aplikacji: gdy zmieni się sama aplikacja, na dole ekranu pojawi się pasek „Jest nowa wersja, odśwież.” z przyciskiem „Odśwież”. Aplikacja nie przeładuje się sama w trakcie zadania. Po stuknięciu „Odśwież” numer wersji w pasku stanu się zmieni, a postęp zostanie. Zamknięcie i ponowne otwarcie aplikacji też wczytuje nową wersję.
+
+Stara wersja z pliku dalej działa, ale ma swój osobny postęp. Po przeniesieniu najlepiej z niej nie korzystać, żeby postęp się nie rozjechał.
+
 ## Decyzje
 
 1. **Źródło prawdy dla silnika: `silnik.html`.** Dlaczego: jest identyczny z `aplikacja.html` po zbudowaniu, więc wybór nie ma skutków. Alternatywa: wyodrębnienie z `aplikacja.html`, która dałaby ten sam wynik.
