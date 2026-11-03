@@ -107,11 +107,45 @@ Układ jest taki jak w zadaniu. `silnik.html` przeniosłem do `index.html` (`git
 - Pamięć powłoki ma wersję w nazwie (`nauka-powloka-<WERSJA>`). Nowy `sw.js` instaluje się w tle i czeka. Aplikacja pokazuje wtedy na dole pasek „Jest nowa wersja, odśwież.” z przyciskiem. Dopiero stuknięcie aktywuje nową wersję i przeładowuje stronę. Zamknięcie i ponowne otwarcie aplikacji też ją aktywuje. Stare pamięci powłoki są kasowane przy aktywacji.
 - `WERSJA` w `sw.js` i `index.html` ustawia `narzedzia/wersja.py`: data i skrót SHA-256 plików powłoki. Test sprawdza, że skrót zgadza się z plikami, więc zmiana `index.html` bez nowej wersji nie przejdzie testów.
 
-**Manifest**: `name` i `short_name` „Nauka”, `id`, `start_url` i `scope` równe `./`, `display: standalone`, `lang: pl`, ikony 192 i 512 (`any`) oraz 192 i 512 (`maskable`). Ikony rysuje `narzedzia/ikony.py`: kartka w kratkę z marginesem, żółtym zakreśleniem i zielonym ptaszkiem na granatowym tle, bez tekstu. W wersji maskable kartka mieści się w bezpiecznym kole.
+**Manifest**: `name` i `short_name` „Nauka”, `start_url` i `scope` równe `./`, `id` równe `nauka/` (poprawione w fazie 3, decyzja 17), `display: standalone`, `lang: pl`, ikony 192 i 512 (`any`) oraz 192 i 512 (`maskable`). Ikony rysuje `narzedzia/ikony.py`: kartka w kratkę z marginesem, żółtym zakreśleniem i zielonym ptaszkiem na granatowym tle, bez tekstu. W wersji maskable kartka mieści się w bezpiecznym kole.
 
 **Narzędzia**: `narzedzia/katalog.py` (katalog z frontmatterów), `narzedzia/wersja.py` (wersja powłoki), `narzedzia/ikony.py`, `narzedzia/zbuduj.py`, `testy/serwer.py` (serwer jak Pages pod `/nauka/`, z `Cache-Control: max-age=600`).
 
 Sprawdzone w tej fazie próbą dymną (pełne testy w fazie 3): wybór klasy, lista z oboma tematami, przejście wstecz o ekran, aktywny service worker i obie pamięci podręczne z kompletem plików, wersja jednoplikowa z pliku, import starego eksportu i eksport w nowym formacie. Zero błędów konsoli.
+
+## Faza 3: testy automatyczne
+
+`python3 testy/run.py` uruchamia wszystko i zwraca 1 przy porażce. Testy przeglądarkowe biegną w pełnym Chromium (Playwright `channel="chromium"`) z emulacją Pixel 7 (dotyk, 412 px, Android w nagłówku przeglądarki). `testy/serwer.py` serwuje stronę pod `http://127.0.0.1:<port>/nauka/` z nagłówkami jak na Pages. Testy, które zmieniają serwowane pliki albo wyłączają sieć, dostają własną kopię strony i własny serwer. Każdy test sprawdza na końcu, że w konsoli nie było ani jednego błędu ani ostrzeżenia.
+
+| test | co sprawdza | wynik |
+|---|---|---|
+| statyczne (7) | `.nojekyll`, katalog zgodny z frontmatterami, `WERSJA` zgodna ze skrótem powłoki, brak adresów sieciowych i ścieżek bezwzględnych, pola manifestu i rozmiary PNG, unikalne identyfikatory, 10 rysunków w pliku figur | przeszły |
+| 01 | start bez błędów konsoli, wybór klasy, kl. 8 widzi oba tematy, pasek stanu z numerem uruchomienia i pamięcią trwałą | przeszedł |
+| 02 | każde z 51 zadań sprawdzanych w obu tematach rozwiązane dobrze i źle: werdykt, konkretne wyjaśnienie (dokładnie to wyjaśnienie odpowiedzi w quizie, źle ocenione zdanie w pf, wpisana i poprawna wartość w luce, źle ułożone kroki, złe połączenie w parach), zapis, wynik „1 / 1” albo „0 / 1”. Sprawdzian 7 z 10 dobrze daje „7 / 10 pkt” i trzy omówione błędy. Fiszki „Umiem” i „Jeszcze nie” trafiają do zapisu | przeszedł |
+| 03 | `0,375`, `0.375`, ` 0,3750 ` uznane; `-4`, `−4`, `2.5`, `–2.5` uznane; `4` zamiast `-4` nie; `11/12` i `11 / 12`; `mmxxvii`. Minus wpisywany z klawiatury. `inputmode`: pełna klawiatura w `k26`, `k13`, `k23`, numeryczna w `k18`, `k11` | przeszedł |
+| 04 | trzy błędne i dwa dobre zadania w dwóch tematach, przeładowanie: numer uruchomienia +1, „Powtórka błędów” pokazuje dokładnie błędne zadania | przeszedł |
+| 05 | jeden start online bez otwierania tematu, czekanie na service worker i komplet tematów w pamięci, potem `set_offline(True)` **i zatrzymanie serwera**, przeładowanie, kompendium i zadanie w obu tematach | przeszedł |
+| 06 | postęp w figurach, przeładowanie bez sieci, na serwerze nowa `wersja` i zmieniony nagłówek działu, powrót sieci, przeładowanie: nowa treść widoczna, postęp bez zmian. Potem nowa `WERSJA` powłoki: w trakcie zadania pojawia się pasek „Jest nowa wersja, odśwież”, strona się nie przeładowuje, wybrana odpowiedź zostaje. Stuknięcie przeładowuje do nowej wersji, postęp zostaje | przeszedł |
+| 07 | eksport, `localStorage.clear()`, przeładowanie, import „Zastąp”, eksport: oba pliki identyczne poza datą eksportu. Potem stary format z wersji jednoplikowej „Połącz”: fiszka `f:f02` trafia pod `f02`, nowszy wpis nie jest nadpisany starszym, licznik 50 i data 1.09.2026 przejęte | przeszedł |
+| 08 | `Page.getInstallabilityErrors` zwraca pustą listę, Chrome wysyła `beforeinstallprompt`, `Page.getAppId` kończy się na `/nauka/`, manifest bez błędów, pola manifestu, ikony 200 i `image/png` | przeszedł |
+| 09 | kompendium figur 5 rysunków, zadania `g03`, `g04`, `g07`, `g12`, `g15` po jednym, razem 10, każdy większy niż 100×60 px, żaden znacznik nie widnieje jako tekst | przeszedł |
+| 10 | serwer bez figur w katalogu, import `mat-e8-figury.md` z pliku: komunikat, oznaczenie „z pliku”, 5 rysunków, temat zostaje po przeładowaniu w `nauka:_plik:mat-e8-figury`. To samo w wersji jednoplikowej otwartej z `file://` | przeszedł |
+| 11 | temat testowy z identyfikatorami `k01` i `f01` jak w liczbach: odpowiedź w jednym nie zmienia drugiego, każdy klucz w `localStorage` pasuje do schematu | przeszedł |
+| 12 | szerokość 360 px, 8 widoków i każde z 51 zadań przed sprawdzeniem i po nim: wszystkie przyciski, pola i podsumowania co najmniej 44×44 px, strona nie szersza niż 360 px | przeszedł |
+| 13 | migracja `nauka:v1`: zadanie i fiszka pod nowymi kluczami, licznik 7 → 8, kopia `nauka:v1` zostaje, druga migracja nic nie nadpisuje | przeszedł |
+| 14 | temat z pułapkami w SVG (`onload`, `<script>`, `javascript:`, `onclick`, `url(https://…)`, `<image>`, `<foreignObject>`, `<style>@import`, `<animate>`): nic się nie wykonuje, nic niebezpiecznego nie zostaje w DOM, bezpieczna linia zostaje, `<b>` poza rysunkiem jest tekstem z ostrzeżeniem | przeszedł |
+| 15 | pierwiastek: znak i kreska zaczynają się na tej samej wysokości, bez przerwy w poziomie, znak nie krótszy od argumentu. W kompendium, w odpowiedziach quizu `g11` i w fiszkach `gf06`–`gf08` | przeszedł |
+| 16 | zero ostrzeżeń parsera w obu tematach | przeszedł |
+| 17 | kl. 4 widzi „Tematy wkrótce”, zmiana na kl. 8 w ustawieniach pokazuje tematy | przeszedł |
+| 18 | wstecz z ćwiczeń wraca do tematu, a dalej do listy | przeszedł |
+
+**Wynik: 25 z 25.** Czas całości około 80 sekund.
+
+Sprawdziłem też, czy testy nie są puste, psując celowo dane. Manifest bez ikon i `start_url` przy teście 08 dał `start-url-not-valid` i `manifest-missing-suitable-icon`. Samo `set_offline(True)` (bez zatrzymywania serwera) też odcina service workera od sieci, więc test 05 na produkcji jest wiarygodny.
+
+Test 14 złapał błąd, który wprowadziłem w fazie 1: sprawdzanie znaczników HTML zaczynało od końca pliku, więc nigdy niczego nie zgłaszało. Poprawione. Test 08 złapał błąd manifestu: `"id": "./"` jest rozwiązywane względem początku domeny, nie katalogu, więc aplikacja miałaby identyfikator `akku1906.github.io/`, wspólny z każdą przyszłą stroną z tego konta. Teraz `"id": "nauka/"`.
+
+**Czego nie da się sprawdzić w emulacji**: czy prawdziwa klawiatura Androida przy `inputmode="text"` i `"decimal"` wygląda tak, jak zakładam (test sprawdza tylko atrybut); jak wygląda ikona na ekranie głównym i okno instalacji; czy Chrome na telefonie przyzna pamięć trwałą (w emulacji `persist()` zwraca `false`); fizyczny przycisk wstecz (emulowany przez historię przeglądarki); systemowy wybór pliku `.md` i `.json` na Androidzie; gdzie trafia pobrany plik postępu w trybie zainstalowanym; tryb samolotowy zamiast emulowanego braku sieci; tryb ciemny. To wszystko jest w instrukcji dla rodzica na końcu.
 
 ## Decyzje
 
@@ -133,6 +167,11 @@ Sprawdzone w tej fazie próbą dymną (pełne testy w fazie 3): wybór klasy, li
 15. **Import: „Połącz” bierze nowszy wpis** (po czasie ostatniej odpowiedzi), licznik uruchomień jako większy z dwóch, datę pierwszego jako wcześniejszą. **„Zastąp”** przyjmuje stan z pliku w całości, z licznikiem i ustawieniami. Bez dodatkowego `confirm`, bo wybór jest już na osobnym ekranie z opisem skutków. Alternatywa: sumowanie liczników podejść, które dublowałoby wpisy przy dwukrotnym imporcie tego samego pliku.
 16. **Usunięcie `aplikacja.html` z repozytorium.** Dlaczego: to wynik budowania, identyczny ze źródłem, i leżałby pod adresem Pages jako druga, nieaktualna aplikacja. Alternatywa: zostawić jako archiwum, ale historia gita już nim jest.
 
+17. **`"id": "nauka/"` w manifeście.** Dlaczego: `id` rozwiązuje się względem początku domeny, więc `./` dawało `akku1906.github.io/`, wspólne dla wszystkich przyszłych stron z konta, a Chrome uznaje aplikacje o tym samym `id` za jedną. `nauka/` daje `/nauka/`, czyli to, co Chrome sam podpowiada. Zapis jest względny. Alternatywa: brak `id` (wtedy identyfikatorem jest `start_url`, też `/nauka/`), ale każda późniejsza zmiana `start_url` tworzyłaby drugą aplikację.
+18. **Testy w pełnym Chromium (`channel="chromium"`)**, a nie w domyślnym „headless shell”. Dlaczego: tylko pełne Chromium ocenia instalowalność, a przy okazji jest bliżej Chrome z telefonu. `run.py` wraca do domyślnej przeglądarki, gdyby pełnej nie było.
+19. **Własny prosty program uruchamiający testy** zamiast pytest. Dlaczego: na komputerze rodzica wystarczy Python i Playwright. Alternatywa: pytest, wygodniejszy w raportach, ale jako dodatkowa zależność.
+20. **Testy znajdują elementy po atrybutach `data-*`** (`data-k`, `data-temat`, `data-w`, `data-akcja`) i biorą poprawne odpowiedzi z tematu sparsowanego przez samą aplikację (`window.nauka`). Dlaczego: odpowiedzi są tasowane, a testy nie mogą zależeć od kolejności ani od kopii parsera w Pythonie. Alternatywa: osobny parser w Pythonie, który mógłby rozjechać się z silnikiem.
+
 ## Ściany
 
-Na razie brak.
+1. **`Page.getInstallabilityErrors` w domyślnym trybie headless Playwrighta zwraca pustą listę zawsze**, także dla strony bez manifestu (sprawdzone na trzech zepsutych wariantach). Test oparty na nim nic by nie sprawdzał. Obejście: test 08 uruchamia pełne Chromium w nowym trybie headless z flagą `--bypass-app-banner-engagement-checks`. Tam lista działa (każda mutacja daje konkretny błąd) i dodatkowo przychodzi `beforeinstallprompt`.

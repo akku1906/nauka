@@ -4,7 +4,7 @@
    Tematy (tematy/index.json i tematy/*.md): najpierw sieć, potem pamięć. Przy każdym pobraniu katalogu
    pobieramy do pamięci wszystkie tematy z katalogu, także te jeszcze nieotwierane.
    WERSJĘ ustawia narzedzia/wersja.py na podstawie skrótu plików powłoki. */
-const WERSJA='2026-11-03.b658f558';
+const WERSJA='2026-11-03.8f20931c';
 const POWLOKA='nauka-powloka-'+WERSJA;
 const TEMATY='nauka-tematy';
 const PLIKI_POWLOKI=['index.html','manifest.webmanifest','ikony/ikona-192.png','ikony/ikona-512.png','ikony/ikona-maskable-192.png','ikony/ikona-maskable-512.png'];

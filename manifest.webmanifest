@@ -4,7 +4,7 @@
   "description": "Kompendium, zadania i fiszki do nauki. Działa bez internetu.",
   "lang": "pl",
   "dir": "ltr",
-  "id": "./",
+  "id": "nauka/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

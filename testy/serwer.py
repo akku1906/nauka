@@ -48,6 +48,9 @@ class Serwer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+    def handle_error(self, request, client_address):
+        pass  # przeglądarka zrywa połączenia przy przeładowaniu; to nie jest błąd testu
+
 
 class SerwerTestowy:
     def __init__(self, katalog, port=0):

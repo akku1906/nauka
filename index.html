@@ -147,7 +147,7 @@ select{font:inherit;font-size:16px;padding:6px;min-height:44px;max-width:100%;co
 .filerow{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:6px 0}
 .filerow small{display:block;color:var(--muted);font-size:13px}
 .btn.small{padding:8px 16px;min-height:44px;font-size:15px}
-.toclink{background:none;border:0;padding:10px 0;min-height:44px;color:var(--muted);text-decoration:underline;font-size:15px;text-align:left}
+.toclink{background:none;border:0;padding:10px 0;min-height:44px;min-width:44px;color:var(--muted);text-decoration:underline;font-size:15px;text-align:left}
 .update{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--ink);color:var(--paper);font-size:16px;z-index:10}
 .update[hidden]{display:none}
 .update .btn{background:var(--paper);color:var(--ink)}
@@ -289,7 +289,7 @@ function parsePackage(src){
   const lines=src.replace(/\r/g,'').replace(/^\s+/,'').split('\n');const warn=[];
   let i=0;const meta={};
   if(lines[0]&&lines[0].trim()==='---'){i=1;while(i<lines.length&&lines[i].trim()!=='---'){const m=lines[i].match(/^(\w+):\s*(.*)$/);if(m)meta[m[1]]=m[2].trim();i++;}i++;}
-  const sec={};let cur=null;
+  const body0=i;const sec={};let cur=null;
   for(;i<lines.length;i++){const l=lines[i];const m=l.match(/^# (.+)$/);if(m){cur=m[1].trim().toLowerCase();sec[cur]=[];continue;}if(cur)sec[cur].push({t:l,n:i+1});}
   if(!meta.tytul)warn.push('Brak pola „tytul” w nagłówku.');
   const id=meta.id||('pakiet-'+hash(meta.tytul||src.slice(0,200)));
@@ -297,7 +297,7 @@ function parsePackage(src){
   else if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(meta.id))warn.push('Pole „id” może zawierać tylko litery łacińskie, cyfry, kropkę, myślnik i podkreślnik, i nie może zaczynać się od znaku specjalnego.');
   // surowy HTML: dozwolony tylko blok <svg>…</svg>, który zaczyna się na początku linii
   let inSvg=0;
-  for(let k=i;k<lines.length;k++){
+  for(let k=body0;k<lines.length;k++){
     const l=lines[k];
     if(!inSvg&&/^\s*<svg[\s>]/.test(l))inSvg=k+1;
     if(inSvg){if(/<\/svg>/.test(l))inSvg=0;continue;}
@@ -531,7 +531,7 @@ const mastered=(x,temat=CUR)=>{const s=Z.items[itemKey(temat,x.id)];return s&&s.
 function postepTematu(p){const all=[...checkable(p),...p.cards];return {done:all.filter(x=>mastered(x,p.id)).length,all:all.length};}
 
 /* ============ trwałość, wersja, aktualizacje ============ */
-const WERSJA='2026-11-03.b658f558';
+const WERSJA='2026-11-03.8f20931c';
 let TRWALA=null;
 async function trwalosc(){
   if(!(navigator.storage&&navigator.storage.persist)){TRWALA='brak';odswiezStatus();return;}
