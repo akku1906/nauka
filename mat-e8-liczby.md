@@ -5,7 +5,7 @@ przedmiot: Matematyka
 tematyka: Egzamin ósmoklasisty 2027 — wzory, prawa, figury
 klasa: 8
 czas: 30 min
-wersja: 2026-10-31
+wersja: 2026-11-03
 ---
 
 # Kompendium
@@ -133,6 +133,18 @@ Oceń, czy zdanie jest prawdziwe, czy fałszywe.
 
 ### Rozwiązanie
 Minus razy minus daje plus, minus razy plus daje minus, a przy dzieleniu jest tak samo. Dlatego $(-2) * 5 = -10$ i $(-12) : (-3) = 4$.
+
+## Liczby ujemne [1 pkt] {luka #k26}
+Oblicz.
+
+$(-12) : 3 =$ ___[-4]
+
+$-2,5 + 5 =$ ___[2,5]
+
+$1 - 3,5 =$ ___[-2,5]
+
+### Rozwiązanie
+Minus podzielony przez plus daje minus: $(-12) : 3 = -4$. Dodając liczbę dodatnią do ujemnej, przesuwamy się w prawo na osi: $-2,5 + 5 = 2,5$. Odejmując więcej, niż mamy, schodzimy poniżej zera: $1 - 3,5 = -2,5$.
 
 ## Wartość bezwzględna [1 pkt] {luka #k03}
 $|-7| =$ ___[7], a $|0| =$ ___[0].
