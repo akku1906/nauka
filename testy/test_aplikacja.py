@@ -722,3 +722,6 @@ def test_19_wybor_pliku_bez_filtra_i_komunikaty(ctx):
         s.bez_bledow()
     finally:
         s.zamknij()
+
+
+test_19_wybor_pliku_bez_filtra_i_komunikaty.PROD = True

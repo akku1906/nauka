@@ -5,7 +5,8 @@ Sesja w chmurze, 3 listopada 2026. Pracowałem sam, według `ZADANIE.md`, faza p
 ## Podsumowanie
 
 - Aplikacja działa pod adresem **https://akku1906.github.io/nauka/** jako instalowalna PWA. Wszystkie pliki zwracają 200, a ich zawartość jest identyczna z repozytorium.
-- Testy lokalne: **28 z 28** (`python3 testy/run.py`). Testy na adresie produkcyjnym: **4 z 4** (1, 5, 8, 9).
+- Testy lokalne: **29 z 29** (`python3 testy/run.py`). Testy na adresie produkcyjnym: **5 z 5** (1, 5, 8, 9 i 19).
+- 4 listopada, po teście na Androidzie: okno wyboru pliku nie pokazywało pliku z postępem. Pola wyboru pliku nie mają już filtra `accept`, a zły plik daje czytelny komunikat (sekcja „Po wdrożeniu: wybór pliku na Androidzie”).
 - Najważniejsze naprawy: rysunki SVG wyświetlały się jako tekst; nie było importu postępu; przycisk wstecz zamykał aplikację; klucze zapisu niezgodne z `CLAUDE.md` (teraz `nauka:<temat>:<id>`, z migracją); identyfikator aplikacji w manifeście byłby wspólny dla całej domeny; temat figur uczył twierdzenia odwrotnego do Pitagorasa, wyłączonego z podstawy; rysunek w `g04` przeczył danym.
 - Do sprawdzenia na telefonie: klawiatura z minusem w zadaniu `k26`, instalacja i ikona, import postępu ze starej wersji przez systemowy wybór pliku, pamięć trwała, tryb samolotowy, przycisk wstecz. Instrukcja krok po kroku jest niżej.
 
@@ -20,7 +21,9 @@ Sesja w chmurze, 3 listopada 2026. Pracowałem sam, według `ZADANIE.md`, faza p
 | 5 | [`5626d37`](https://github.com/akku1906/nauka/commit/5626d37acc747ec9776c04705227f12ee83404fb) | faza 3: testy, poprawki znalezione przez testy (ostrzeżenia parsera, `id` manifestu) |
 | 6 | [`0212844`](https://github.com/akku1906/nauka/commit/0212844f9ab03dc2ce5fbc6db2d4aba01cfc5593) | faza 4: audyt treści, poprawki w temacie figur, test treści |
 | 7 | [`8d7fb81`](https://github.com/akku1906/nauka/commit/8d7fb81e235503b273bfc5287f069c32c8e8100a) | instrukcja dla rodzica; ten stan poszedł na `main` |
-| 8 | ostatni commit z tym raportem | faza 6: raport końcowy |
+| 8 | [`c366894`](https://github.com/akku1906/nauka/commit/c366894) | faza 6: raport końcowy |
+| 9 | [`73f9d85`](https://github.com/akku1906/nauka/commit/73f9d854a08219e944f5ec7d6b8a5bc8c3d96c4b) | 4 listopada: wybór pliku bez `accept`, komunikaty o złym pliku, test 19 |
+| 10 | ostatni commit z tym raportem | test 19 także na produkcji, raport |
 
 Praca szła na gałęzi `claude/amazing-wozniak-huup95`, wypychanej po każdej fazie. Wdrożenie: zwykły push tej gałęzi na `main` (przewinięcie, bez merge commita), bo `main` był jej przodkiem.
 
@@ -247,6 +250,47 @@ Testy na produkcji (`python3 testy/run.py --url https://akku1906.github.io/nauka
 | 08 instalowalność: pusta lista błędów, `beforeinstallprompt`, identyfikator aplikacji `/nauka/` | przeszedł |
 | 09 dziesięć rysunków w temacie figur, żaden znacznik jako tekst | przeszedł |
 
+## Po wdrożeniu: wybór pliku na Androidzie (4 listopada 2026)
+
+**Zgłoszenie z telefonu**: w „Wczytaj postęp z pliku” systemowe okno wyboru nie pokazywało pliku `postep-….json` z Pobranych.
+
+**Przyczyna (prawdopodobna, nie odtworzona w emulacji)**: oba pola miały filtr `accept` (`.json,application/json,text/plain` i `.md,text/markdown,text/plain`). Chrome na Androidzie zamienia go na filtr typów MIME w systemowym oknie wyboru, a plik w Pobranych bywa zapisany z typem `application/octet-stream`, więc okno go pomija. Playwright wstawia plik do pola z pominięciem systemowego okna, dlatego testy tego nie wykryły. To jest w sekcji „Czego nie da się sprawdzić w emulacji”.
+
+**Poprawka** ([`73f9d85`](https://github.com/akku1906/nauka/commit/73f9d854a08219e944f5ec7d6b8a5bc8c3d96c4b)):
+
+- `#plik` i `#plik-postep` nie mają `accept`. Okno pokazuje wszystkie pliki.
+- Zawartość jest sprawdzana po wczytaniu, jak dotąd, a dodatkowo przed wczytaniem i zaraz po nim. Każdy przypadek ma własny komunikat z nazwą pliku:
+
+| plik | komunikat (początek) |
+|---|---|
+| pusty | „Plik „…” jest pusty. Wybierz …” |
+| większy niż 5 MB | „… jest za duży (6,0 MB) …” |
+| binarny (zdjęcie, PDF) | „… nie jest plikiem tekstowym (to może być zdjęcie albo dokument) …” |
+| temat w polu postępu | „… to plik tematu, a nie postęp. Użyj „Dodaj temat z pliku”.” |
+| postęp w polu tematu | „… wygląda na plik z postępem, a nie na temat. Użyj „Wczytaj postęp z pliku”.” |
+| JSON bez postępu | „… nie jest plikiem z postępem aplikacji Nauka: brakuje w nim danych postępu.” |
+| dowolny inny tekst | „… nie jest plikiem z postępem aplikacji Nauka. Plik z postępem powstaje przyciskiem „Zapisz postęp do pliku” …” albo „… nie jest plikiem tematu: nie ma nagłówka (linia ---) ani sekcji …” |
+| błąd odczytu | „Nie udało się odczytać pliku „…”. Spróbuj jeszcze raz.” |
+
+- Komunikat błędu ma czerwony pasek i `role="alert"`, pojawia się na tym samym ekranie, a zapis w telefonie zostaje bez zmian.
+- Przy okazji: dwa miejsca w kodzie miały w wyrażeniu regularnym niewidoczny znak BOM wpisany dosłownie. Teraz są zapisane jako `\uFEFF`. Działanie bez zmian.
+- Nowa wersja powłoki `2026-11-04.b2b4e753`, więc zainstalowana aplikacja dostanie pasek „Jest nowa wersja, odśwież.”
+
+**Test 19** (`test_19_wybor_pliku_bez_filtra_i_komunikaty`):
+
+- Oba pola są bez `accept`.
+- Import przechodzi do ekranu „Połączyć czy zastąpić?” dla pliku postępu z typem `application/octet-stream`, bez rozszerzenia i bez typu, jako `.txt`, oraz dla starego formatu.
+- Temat `.md` z typem `application/octet-stream` dodaje się normalnie.
+- Dziesięć złych plików z listy wyżej, każdy na liście tematów i w ustawieniach: oczekiwany komunikat z nazwą pliku, `role="alert"`, zapis bez zmian, ten sam ekran.
+- Wklejony tekst, który nie jest postępem, też dostaje komunikat.
+- Zero błędów konsoli.
+
+Sprawdziłem, że test nie jest pusty. Na poprzednim `index.html` pada na filtrze `accept`, a po wycięciu samego filtra na braku komunikatów.
+
+**Wyniki**: lokalnie **29 z 29**. Po pushu na `main` (`c366894..73f9d85`) Pages podał nową wersję po około 40 sekundach. `curl -I` daje 200 dla `/nauka/`, `index.html`, manifestu, `sw.js`, katalogu, obu tematów i czterech ikon. `index.html` i `sw.js` na produkcji są identyczne z repozytorium (MD5), a pola `type="file"` na produkcji nie mają `accept`. Testy na produkcji: **5 z 5** (1, 5, 8, 9 i nowy 19, który nie zmienia niczego na serwerze, więc też jest oznaczony do uruchamiania na produkcji).
+
+**Na telefonie zostaje do sprawdzenia**: czy po odświeżeniu do wersji `2026-11-04.b2b4e753` okno wyboru pokazuje `postep-….json` w Pobranych. Jeśli nie, przyczyna jest gdzie indziej (np. uprawnienia do Pobranych) i zostaje wklejenie tekstu w ustawieniach.
+
 ## Instrukcja dla rodzica: prawdziwy telefon z Androidem
 
 Potrzebne: telefon z Chrome, internet na czas instalacji, stara wersja aplikacji otwierana z pliku (ta, na której jest dotychczasowy postęp).
@@ -262,7 +306,9 @@ Menu Chrome (trzy kropki w prawym górnym rogu), potem „Zainstaluj aplikację�
 
 **4. Wczytaj postęp.**
 W zainstalowanej aplikacji przewiń na dół i stuknij „Wczytaj postęp z pliku”. Wybierz plik z kroku 1 z folderu Pobrane. Aplikacja pokaże, ile wpisów jest w pliku. Stuknij „Zastąp” (w świeżej instalacji nie ma czego łączyć). Sprawdź pasek stanu na dole: numer uruchomienia powinien kontynuować liczenie ze starej wersji, a w temacie „Powtórka błędów” powinny być dawne błędy.
-Jeśli telefon nie pozwala wybrać pliku `.json` (jest wyszarzony): „Ustawienia”, „Wklej postęp jako tekst”, wklej tekst z kroku 1, „Wczytaj tekst”.
+Okno wyboru pliku pokazuje wszystkie pliki, bez filtra. Jeśli otwiera się na „Ostatnich” albo „Zdjęciach”, wybierz z menu po lewej „Pobrane”. Gdy wybierzesz zły plik (zdjęcie, temat zamiast postępu, pusty), aplikacja napisze na czerwono, co jest nie tak, i niczego nie zmieni.
+Gdyby pliku i tak nie było widać: „Ustawienia”, „Wklej postęp jako tekst”, wklej tekst z kroku 1, „Wczytaj tekst”.
+**Jeśli aplikacja była już zainstalowana przed 4 listopada**, najpierw weź poprawkę: otwórz aplikację z internetem i stuknij „Odśwież” na pasku „Jest nowa wersja, odśwież.” (albo zamknij aplikację i otwórz ją jeszcze raz). W pasku stanu ma być wersja `2026-11-04.b2b4e753` albo nowsza.
 
 **5. Sprawdź pasek stanu.**
 Na dole listy tematów: „Zapis postępu działa. To uruchomienie nr …, pierwsze …. Pamięć trwała: tak/nie. Wersja ….” Po instalacji Chrome zwykle przyznaje pamięć trwałą („tak”). Przy „nie” postęp i tak się zapisuje, ale przeglądarka mogłaby go usunąć, gdy w telefonie skończy się miejsce. Wtedy warto co jakiś czas robić „Zapisz postęp do pliku”.
@@ -310,7 +356,9 @@ Stara wersja z pliku dalej działa, ale ma swój osobny postęp. Po przeniesieni
 24. **Treści na granicy podstawy zostawione** (jednostki pola, kąty wielokątów foremnych, kąt zewnętrzny, trójkąt 30°, 60°, 90°, środek symetrii). Dlaczego: każda wynika z wymagań podstawy albo jest w szkolnych wymaganiach dla kl. 8, a usunięcie zubożyłoby powtórkę. Usuwałem tylko to, co podstawa wyłącza wprost albo czego nie ma w odpowiednim dziale.
 25. **Audyt treści jako stały test** (`testy/test_tresc.py`), a nie jednorazowy rachunek w raporcie. Dlaczego: treść będzie się zmieniać, a test pilnuje odpowiedzi i proporcji rysunków przy każdej zmianie. Koszt: przy zmianie zadania trzeba poprawić też oczekiwany wynik w teście.
 26. **Wiersz Prawda/Fałsz może zawinąć przyciski pod zdanie.** Dlaczego: przy 360 px długie słowo („przeciwprostokątna”) i dwa przyciski 64 px nie mieszczą się w jednej linii, a strona robiła się szersza od ekranu (wykrył to test 12 na nowym `g26`).
+27. **Pola wyboru pliku bez `accept`, walidacja po wczytaniu.** Dlaczego: na Androidzie filtr z `accept` usuwał z okna wyboru plik `.json`, którego typ MIME w Pobranych nie pasował (najpewniej `application/octet-stream`). Bez filtra telefon pozwoli wybrać cokolwiek, więc aplikacja sprawdza plik sama: pusty, większy niż 5 MB, binarny (znak `\0` albo więcej niż 0,2% znaków nieczytelnych w UTF-8), temat zamiast postępu i odwrotnie, JSON bez danych postępu. Komunikat podaje nazwę pliku, jest czerwony i ma `role="alert"`, a zapis zostaje nietknięty. Alternatywa: rozszerzyć `accept` o `application/octet-stream`, ale wtedy dalej zależymy od tego, jaki typ nada plikowi konkretny telefon i konkretna przeglądarka.
 
 ## Ściany
 
 1. **`Page.getInstallabilityErrors` w domyślnym trybie headless Playwrighta zwraca pustą listę zawsze**, także dla strony bez manifestu (sprawdzone na trzech zepsutych wariantach). Test oparty na nim nic by nie sprawdzał. Obejście: test 08 uruchamia pełne Chromium w nowym trybie headless z flagą `--bypass-app-banner-engagement-checks`. Tam lista działa (każda mutacja daje konkretny błąd) i dodatkowo przychodzi `beforeinstallprompt`.
+2. **Systemowego okna wyboru pliku na Androidzie nie da się odtworzyć w emulacji.** Playwright wstawia plik do pola z pominięciem okna, więc filtr `accept`, który na telefonie ukrywał plik z postępem, przechodził testy. Obejście: pola są bez filtra (decyzja 27), a test 19 pilnuje, żeby filtr nie wrócił, i sprawdza walidację zawartości. Samo okno sprawdza się tylko na telefonie.
