@@ -137,6 +137,7 @@ summary{cursor:pointer;color:var(--muted);padding:10px 0;min-height:44px}
 textarea{width:100%;min-height:160px;font:13px monospace;color:inherit;background:var(--card);border:1px solid var(--line)}
 select{font:inherit;font-size:16px;padding:6px;min-height:44px;max-width:100%;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:6px;margin:6px 0 0}
 .note{border-left:3px solid var(--marker);background:var(--card);padding:10px 12px;margin:0 0 14px;font-size:15px}
+.note.blad{border-left-color:var(--red)}
 .empty{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 16px;margin:10px 0 16px}
 .menu button.topic{align-items:center}
 .topic .t{display:block}
@@ -162,8 +163,8 @@ body.z-paskiem main{padding-bottom:120px}
 <body>
 <main id="app"></main>
 <div id="aktualizacja" class="update" role="status" hidden><span>Jest nowa wersja, odśwież.</span><button type="button" class="btn">Odśwież</button></div>
-<input type="file" id="plik" accept=".md,text/markdown,text/plain" hidden>
-<input type="file" id="plik-postep" accept=".json,application/json,text/plain" hidden>
+<input type="file" id="plik" hidden>
+<input type="file" id="plik-postep" hidden>
 <!-- PACZKI -->
 <script>
 "use strict";
@@ -451,7 +452,7 @@ Z.licznik.uruchomienia=(+Z.licznik.uruchomienia||0)+1;Z.licznik.pierwsze=Z.liczn
 function stanDoEksportu(){return {format:'nauka-postep',wersja:2,eksport:new Date().toISOString(),licznik:Z.licznik,ustawienia:Z.ustaw,postep:Z.items,tematyZPliku:Z.pliki};}
 const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
 function odczytajPostep(text){
-  let o;try{o=JSON.parse(String(text).replace(/^﻿/,''));}catch(e){return null;}
+  let o;try{o=JSON.parse(String(text).replace(/^\uFEFF/,''));}catch(e){return null;}
   if(!isObj(o))return null;
   if(o.format==='nauka-postep'&&isObj(o.postep)){
     const items={};for(const k in o.postep)if(k.indexOf(':')>0&&isObj(o.postep[k]))items[k]=o.postep[k];
@@ -532,7 +533,7 @@ const mastered=(x,temat=CUR)=>{const s=Z.items[itemKey(temat,x.id)];return s&&s.
 function postepTematu(p){const all=[...checkable(p),...p.cards];return {done:all.filter(x=>mastered(x,p.id)).length,all:all.length};}
 
 /* ============ trwałość, wersja, aktualizacje ============ */
-const WERSJA='2026-11-03.dd160a97';
+const WERSJA='2026-11-04.b2b4e753';
 let TRWALA=null;
 async function trwalosc(){
   if(!(navigator.storage&&navigator.storage.persist)){TRWALA='brak';odswiezStatus();return;}
@@ -583,10 +584,11 @@ function backBtn(fallback,label){const b=h('button','back',label||'‹ Wróć');
 window.addEventListener('popstate',()=>render());
 const route=()=>location.hash.replace(/^#\/?/,'').split('/').filter(Boolean).map(x=>{try{return decodeURIComponent(x);}catch(e){return x;}});
 const topicHash=(id=CUR)=>'#/t/'+encodeURIComponent(id);
-let KOMUNIKAT='';
+let KOMUNIKAT='',KOMUNIKAT_BLAD=false;
+function blad(msg){KOMUNIKAT=msg;KOMUNIKAT_BLAD=true;render();}
 function render(){
   toTop();app.innerHTML='';
-  if(KOMUNIKAT){app.append(h('div','note',esc(KOMUNIKAT)));KOMUNIKAT='';}
+  if(KOMUNIKAT){const n=h('div','note'+(KOMUNIKAT_BLAD?' blad':''),esc(KOMUNIKAT));if(KOMUNIKAT_BLAD)n.setAttribute('role','alert');app.append(n);KOMUNIKAT='';KOMUNIKAT_BLAD=false;}
   const r=route();
   if(r[0]==='ustawienia')return ustawienia();
   if(r[0]==='import')return ekranImportu();
@@ -685,20 +687,29 @@ function footer(withReset){
 }
 
 /* ============ pliki: temat i postęp ============ */
-function przyjmijPlikTematu(src){
-  src=String(src).replace(/^﻿/,'');
-  if(/^\s*\{/.test(src)){KOMUNIKAT='To wygląda na plik z postępem. Użyj „Wczytaj postęp z pliku”.';return render();}
+const POCZATEK_TEMATU=/^\s*---\s*\n|^#\s+(Kompendium|Zadania|Fiszki)\s*$/im;
+function przyjmijPlikTematu(src,nazwa){
+  const n=nazwa||'Tekst';
+  src=String(src).replace(/^\uFEFF/,'');
+  if(/^\s*\{/.test(src))return blad(n+' wygląda na plik z postępem, a nie na temat. Użyj „Wczytaj postęp z pliku”.');
   const p=parsePackage(src);
-  if(!p.meta.tytul&&!p.tasks.length&&!p.cards.length&&!p.chapters.length){KOMUNIKAT='To nie wygląda na plik tematu: nie ma nagłówka ani sekcji.';return render();}
+  if(!p.meta.tytul&&!p.tasks.length&&!p.cards.length&&!p.chapters.length)return blad(n+' nie jest plikiem tematu: nie ma nagłówka (linia ---) ani sekcji # Kompendium, # Zadania, # Fiszki.');
   Z.pliki[p.id]=src;zapiszPlik(p.id);zbudujListe();
   const t=p.meta.tytul||p.id;
   KOMUNIKAT=PKGS[p.id].origin==='z pliku'?'Dodano temat „'+t+'” z pliku.':'Zapisano temat „'+t+'” z pliku, ale aplikacja ma już tę samą albo nowszą wersję ('+(PKGS[p.id].meta.wersja||'bez wersji')+') i używa jej.';
   go(topicHash(p.id));
 }
 let IMPORT=null;
-function przyjmijPlikPostepu(text){
+function przyjmijPlikPostepu(text,nazwa){
+  const n=nazwa||'Wklejony tekst';
   const imp=odczytajPostep(text);
-  if(!imp){KOMUNIKAT='To nie jest plik z postępem aplikacji Nauka.';return render();}
+  if(!imp){
+    const t=String(text).replace(/^\uFEFF/,'');
+    if(!t.trim())return blad(n+' jest pusty.');
+    if(POCZATEK_TEMATU.test(t))return blad(n+' to plik tematu, a nie postęp. Użyj „Dodaj temat z pliku”.');
+    let json=true;try{JSON.parse(t);}catch(e){json=false;}
+    return blad(n+' nie jest plikiem z postępem aplikacji Nauka'+(json?': brakuje w nim danych postępu.':'. Plik z postępem powstaje przyciskiem „Zapisz postęp do pliku” i ma nazwę nauka-postep-… albo postep-….'));
+  }
   IMPORT=imp;go('#/import');
 }
 function ekranImportu(){
@@ -719,8 +730,24 @@ function ekranImportu(){
   a.append(btn('Połącz','btn',()=>done('polacz','Postęp z pliku połączony z obecnym.')),btn('Zastąp','btn ghost',()=>done('zastap','Postęp zastąpiony postępem z pliku.')),btn('Anuluj','btn ghost',()=>{IMPORT=null;back('#/');}));
   app.append(a);
 }
-document.getElementById('plik').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)f.text().then(przyjmijPlikTematu);};
-document.getElementById('plik-postep').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)f.text().then(przyjmijPlikPostepu);};
+// Pola wyboru pliku są bez filtra „accept”: Android filtruje po typie MIME, a plik .json albo .md w Pobranych
+// bywa zapisany jako application/octet-stream i wtedy w ogóle nie jest widoczny. Zawartość sprawdzamy po wczytaniu.
+const MAX_PLIK=5*1024*1024;
+function czytajPlik(id,rodzaj,fn){
+  document.getElementById(id).onchange=e=>{
+    const f=e.target.files[0];e.target.value='';if(!f)return;
+    const n='Plik „'+f.name+'”';
+    if(!f.size)return blad(n+' jest pusty. Wybierz '+rodzaj+'.');
+    if(f.size>MAX_PLIK)return blad(n+' jest za duży ('+(f.size/1048576).toFixed(1).replace('.',',')+' MB). Wybierz '+rodzaj+', który ma najwyżej kilkadziesiąt kilobajtów.');
+    f.text().then(t=>{
+      const zle=(t.match(/\uFFFD/g)||[]).length;
+      if(t.includes('\u0000')||zle>Math.max(2,t.length/500))return blad(n+' nie jest plikiem tekstowym (to może być zdjęcie albo dokument). Wybierz '+rodzaj+'.');
+      fn(t,n);
+    },()=>blad('Nie udało się odczytać pliku „'+f.name+'”. Spróbuj jeszcze raz.'));
+  };
+}
+czytajPlik('plik','plik tematu (.md)',przyjmijPlikTematu);
+czytajPlik('plik-postep','plik z postępem (.json)',przyjmijPlikPostepu);
 function exportProgress(){
   const data=JSON.stringify(stanDoEksportu(),null,1);
   try{

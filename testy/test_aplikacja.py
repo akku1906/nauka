@@ -652,3 +652,73 @@ def test_18_wstecz_cofa_o_ekran(ctx):
         s.bez_bledow()
     finally:
         s.zamknij()
+
+
+def test_19_wybor_pliku_bez_filtra_i_komunikaty(ctx):
+    """Android filtruje okno wyboru pliku po typie MIME z atrybutu accept, a .json w Pobranych bywa
+    application/octet-stream i wtedy znika z listy. Pola nie mają więc filtra, a zawartość jest sprawdzana po wczytaniu."""
+    def plik(nazwa, dane, mime='application/octet-stream'):
+        return {'name': nazwa, 'mimeType': mime, 'buffer': dane if isinstance(dane, bytes) else dane.encode('utf-8')}
+
+    s = ctx.strona()
+    try:
+        start_z_klasa(ctx, s)
+        for pole in ('#plik', '#plik-postep'):
+            sprawdz(s.pg.get_attribute(pole, 'accept') is None, f'{pole} ma filtr accept')
+        z = {x['id']: x for x in s.zadania('mat-e8-liczby')}['k02']
+        otworz_zadanie(s, ctx.url, 'mat-e8-liczby', 'k02')
+        odpowiedz(s, z, True)
+        s.pg.click('[data-akcja="sprawdz"]')
+        s.ekran('#/', ctx.url)
+        with s.pg.expect_download() as d:
+            s.pg.click('.links button:has-text("Zapisz postęp do pliku")')
+        postep = pathlib.Path(d.value.path()).read_bytes()
+        temat = (KORZEN / 'tematy' / 'mat-e8-figury.md').read_bytes()
+        png = (KORZEN / 'ikony' / 'ikona-192.png').read_bytes()
+        stary = json.dumps({'eksport': '2026-10-31T10:00:00.000Z', 'stan': {'items': {'mat-e8-liczby/k01': {'n': 1, 'ok': 1, 'box': 1, 'last': 1, 't': 1}}, 'launches': 3, 'first': '2026-10-01T10:00:00.000Z'}})
+
+        # dobre pliki z typem, jaki może nadać Android, albo bez rozszerzenia
+        for nazwa, dane, mime in (('postep-2026-11-04.json', postep, 'application/octet-stream'), ('postep', postep, ''),
+                                  ('postep-2026-10-31.json', stary, 'application/octet-stream'), ('postep.txt', postep, 'text/plain')):
+            s.ekran('#/', ctx.url)
+            s.pg.set_input_files('#plik-postep', plik(nazwa, dane, mime))
+            s.pg.wait_for_selector('text=Połączyć z obecnym postępem czy go zastąpić?')
+            s.pg.click('button:has-text("Anuluj")')
+        s.ekran('#/', ctx.url)
+        s.pg.set_input_files('#plik', plik('test-kolizja.md', (DANE / 'test-kolizja.md').read_bytes()))
+        s.pg.wait_for_selector('h1:has-text("Temat testowy")')
+
+        # złe pliki: czytelny komunikat, nazwa pliku w komunikacie, stan bez zmian
+        zle = [
+            ('#plik-postep', plik('zdjecie.jpg', png, 'image/jpeg'), 'nie jest plikiem tekstowym'),
+            ('#plik-postep', plik('pusty.json', b''), 'jest pusty'),
+            ('#plik-postep', plik('mat-e8-figury.md', temat), 'to plik tematu, a nie postęp'),
+            ('#plik-postep', plik('inny.json', '{"a": 1}'), 'brakuje w nim danych postępu'),
+            ('#plik-postep', plik('notatka.txt', 'lista zakupów: mleko, chleb'), 'nie jest plikiem z postępem'),
+            ('#plik-postep', plik('film.mp4', b'x' * (6 * 1024 * 1024)), 'jest za duży'),
+            ('#plik', plik('zdjecie.png', png, 'image/png'), 'nie jest plikiem tekstowym'),
+            ('#plik', plik('postep.json', postep), 'wygląda na plik z postępem'),
+            ('#plik', plik('notatka.txt', 'lista zakupów: mleko, chleb'), 'nie jest plikiem tematu'),
+            ('#plik', plik('pusty.md', b''), 'jest pusty'),
+        ]
+        for widok in ('#/', '#/ustawienia'):
+            for pole, dane, oczek in zle:
+                s.ekran(widok, ctx.url)
+                s.pg.wait_for_selector('#status')
+                przed = s.stan()
+                s.pg.set_input_files(pole, dane)
+                s.pg.wait_for_selector('.note.blad')
+                tekst = s.pg.inner_text('.note.blad')
+                sprawdz(oczek in tekst and dane['name'] in tekst, f'{pole} {dane["name"]} ({widok}): komunikat „{tekst}”')
+                sprawdz(s.pg.get_attribute('.note.blad', 'role') == 'alert', 'komunikat błędu bez role=alert')
+                sprawdz(s.stan() == przed, f'{pole} {dane["name"]}: zły plik zmienił zapis')
+                sprawdz(s.pg.locator('#status').count() == 1, f'{pole} {dane["name"]}: komunikat nie na tym samym ekranie')
+        # wklejony tekst też dostaje czytelny komunikat
+        s.ekran('#/ustawienia', ctx.url)
+        s.pg.click('summary:has-text("Wklej postęp jako tekst")')
+        s.pg.fill('#postep-tekst', 'to nie jest postęp')
+        s.pg.click('button:has-text("Wczytaj tekst")')
+        sprawdz('Wklejony tekst nie jest plikiem z postępem' in s.pg.inner_text('.note.blad'), 'komunikat dla wklejonego tekstu')
+        s.bez_bledow()
+    finally:
+        s.zamknij()
