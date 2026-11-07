@@ -4,6 +4,7 @@ Numery testów odpowiadają punktom fazy 3 w ZADANIE.md. Testy z PROD=True da si
 na adresie produkcyjnym: python3 testy/run.py --url https://akku1906.github.io/nauka/
 """
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -725,3 +726,149 @@ def test_19_wybor_pliku_bez_filtra_i_komunikaty(ctx):
 
 
 test_19_wybor_pliku_bez_filtra_i_komunikaty.PROD = True
+
+
+# ---------------------------------------------------------------- 20, 21: aktualizacja aplikacji
+# Na żądanie testu (klucz w sessionStorage) register() oddaje rejestrację dopiero wtedy, gdy nowa wersja
+# już się instaluje i updatefound już minął. Tak wygląda dla strony wyścig, w którym instalacja ruszyła,
+# zanim register() się rozstrzygnął. W Chromium register() zwykle czeka w kolejce zadań za instalacją
+# (sprawdzone: rozstrzyga się dopiero z gotowym waiting), więc ten stan zdarza się rzadko i nie da się go
+# wywołać naturalnie; test podaje go wprost, z tą samą rejestracją, którą przeglądarka trzyma dla strony.
+WYSCIG_JS = """(()=>{
+  if(!('serviceWorker' in navigator))return;
+  const sw=navigator.serviceWorker,org=sw.register.bind(sw);
+  sw.register=async function(...a){
+    let tak=false;try{tak=sessionStorage.getItem('test-wyscig')==='1';sessionStorage.removeItem('test-wyscig');}catch(e){}
+    const r=tak&&await sw.getRegistration();
+    if(!r)return org(...a);
+    await new Promise(ok=>{r.addEventListener('updatefound',()=>setTimeout(ok,0),{once:true});r.update().catch(()=>{});});
+    window.__wyscig=!!(r.installing&&!r.waiting);
+    return r;
+  };
+})();"""
+
+STAN_JS = """async()=>({
+  ls:Object.fromEntries(Object.keys(localStorage).filter(k=>k.startsWith('nauka:')).map(k=>[k,localStorage.getItem(k)])),
+  idb:indexedDB.databases?(await indexedDB.databases()).map(d=>d.name).sort():null})"""
+
+STARA_PRODUKCJA = '6c4695d'  # wersja 2026-11-04.b2b4e753, na produkcji przed poprawką wyścigu
+
+
+def postep_do_zapisu(ctx, s, url):
+    """Rozwiązuje po jednym zadaniu w dwóch tematach (dobrze i źle) i zapisuje ustawienie klasy."""
+    start_z_klasa(ctx, s, url)
+    s.czekaj_na_sw()
+    for temat, dobrze in (('mat-e8-figury', True), ('mat-e8-liczby', False)):
+        z = s.zadania(temat)[0]
+        otworz_zadanie(s, url, temat, z['id'])
+        odpowiedz(s, z, dobrze)
+        s.pg.click('[data-akcja="sprawdz"]')
+        s.pg.wait_for_selector('.verdict')
+
+
+def porownaj_zapis(przed, po, uruchomien, gdzie):
+    """Zapis po aktualizacji ma być ten sam, z jednym wyjątkiem: licznik uruchomień rośnie o liczbę przeładowań."""
+    lp, lpo = dict(przed['ls']), dict(po['ls'])
+    kp, kpo = json.loads(lp.pop('nauka:_licznik')), json.loads(lpo.pop('nauka:_licznik'))
+    sprawdz(lp == lpo, f'{gdzie}: zapis postępu zmienił się\nprzed: {lp}\npo:    {lpo}')
+    sprawdz(kpo['pierwsze'] == kp['pierwsze'], f'{gdzie}: zmieniła się data pierwszego uruchomienia')
+    sprawdz(kpo['uruchomienia'] == kp['uruchomienia'] + uruchomien,
+            f"{gdzie}: licznik {kp['uruchomienia']} -> {kpo['uruchomienia']}, oczekiwano +{uruchomien}")
+    sprawdz(po['idb'] == przed['idb'], f"{gdzie}: zmieniły się bazy IndexedDB {przed['idb']} -> {po['idb']}")
+    sprawdz(any(':_' not in k and k.count(':') == 2 for k in lp), f'{gdzie}: w zapisie nie ma postępu zadań')
+
+
+def postarz(kat):
+    """Stara wersja leży na serwerze od minuty. Serwer testowy podaje Last-Modified z dokładnością do sekundy,
+    więc stary i nowy sw.js zapisane w tej samej sekundzie dawały 304 i przeglądarka nie widziała nowej wersji.
+    GitHub Pages porównuje ETag, więc na produkcji tego nie ma."""
+    t = time.time() - 60
+    for n in ('index.html', 'sw.js'):
+        os.utime(kat / n, (t, t))
+
+
+def nowa_wersja(kat, stara, nowa, wolna_instalacja=False):
+    """Podmienia WERSJA w kopii strony; opcjonalnie wydłuża instalację nowego SW (wolna sieć)."""
+    for n in ('index.html', 'sw.js'):
+        p = kat / n
+        t = p.read_text(encoding='utf-8')
+        sprawdz(f"const WERSJA='{stara}';" in t, f'{n}: brak WERSJA {stara}')
+        t = t.replace(f"const WERSJA='{stara}';", f"const WERSJA='{nowa}';")
+        if n == 'sw.js' and wolna_instalacja:
+            t = t.replace("const c=await caches.open(POWLOKA);", "await new Promise(r=>setTimeout(r,2000));const c=await caches.open(POWLOKA);", 1)
+            sprawdz('setTimeout(r,2000)' in t, 'nie udało się spowolnić instalacji')
+        p.write_text(t, encoding='utf-8')
+
+
+def kliknij_odswiez(s):
+    sprawdz('Jest nowa wersja, odśwież' in s.pg.inner_text('#aktualizacja'), 'treść paska')
+    with s.pg.expect_navigation():
+        s.pg.click('#aktualizacja button')
+    s.pg.wait_for_selector('main#app > *:not(p.counter)')
+
+
+def test_20_wyscig_instalacji_i_rejestracji(ctx):
+    kat = kopia_strony()
+    postarz(kat)
+    srv = SerwerTestowy(kat).start()
+    s = ctx.strona()
+    try:
+        s.ctx.add_init_script(WYSCIG_JS)
+        postep_do_zapisu(ctx, s, srv.url)
+        stara = s.pg.evaluate('nauka.wersja')
+        nowa_wersja(kat, stara, 'test-wyscig', wolna_instalacja=True)
+        s.pg.evaluate("sessionStorage.setItem('test-wyscig','1')")
+        s.pg.reload()
+        s.pg.wait_for_selector('main#app > *:not(p.counter)')
+        przed = s.pg.evaluate(STAN_JS)
+        s.czekaj('window.__wyscig!==undefined', 'rozstrzygnięcie register()')
+        sprawdz(s.pg.evaluate('window.__wyscig') is True,
+                'scenariusz się nie odtworzył: register() rozstrzygnął się, gdy nowa wersja już nie instalowała się')
+        s.czekaj("navigator.serviceWorker.getRegistration().then(r=>!!r.waiting)", 'nowa wersja czeka', limit=30)
+        try:
+            s.czekaj("!document.getElementById('aktualizacja').hidden", 'pasek nowej wersji', limit=5)
+        except AssertionError:
+            raise AssertionError('nowa wersja zaczęła się instalować przed rozstrzygnięciem register(), a pasek „Jest nowa wersja, odśwież” się nie pokazał')
+        sprawdz(s.pg.evaluate('nauka.wersja') == stara, 'strona przeładowała się sama')
+        kliknij_odswiez(s)
+        sprawdz(s.pg.evaluate('nauka.wersja') == 'test-wyscig', 'po odświeżeniu nadal stara wersja')
+        porownaj_zapis(przed, s.pg.evaluate(STAN_JS), 1, 'po aktualizacji')
+        s.bez_bledow()
+    finally:
+        s.zamknij()
+        srv.stop()
+
+
+def test_21_aktualizacja_z_wersji_produkcyjnej_zachowuje_zapis(ctx):
+    """Stara wersja to dokładnie pliki, które były na produkcji przed poprawką; nowa to obecne repozytorium."""
+    try:
+        stare = {n: subprocess.run(['git', 'show', f'{STARA_PRODUKCJA}:{n}'], cwd=KORZEN, check=True,
+                                   capture_output=True).stdout for n in ('index.html', 'sw.js')}
+    except Exception as e:  # noqa: BLE001
+        raise AssertionError(f'brak commitu {STARA_PRODUKCJA} w repozytorium ({e}); potrzebna pełna historia gita')
+    kat = kopia_strony()
+    nowe = {n: (kat / n).read_bytes() for n in stare}
+    for n, b in stare.items():
+        (kat / n).write_bytes(b)
+    postarz(kat)
+    srv = SerwerTestowy(kat).start()
+    s = ctx.strona()
+    try:
+        postep_do_zapisu(ctx, s, srv.url)
+        sprawdz(s.pg.evaluate('nauka.wersja') == '2026-11-04.b2b4e753', 'stara wersja to nie wersja produkcyjna')
+        przed = s.pg.evaluate(STAN_JS)
+        for n, b in nowe.items():
+            (kat / n).write_bytes(b)
+        s.pg.reload()  # stary kod strony widzi nową wersję (uruchomienie +1)
+        s.pg.wait_for_selector('main#app > *:not(p.counter)')
+        s.czekaj("!document.getElementById('aktualizacja').hidden", 'pasek nowej wersji', limit=30)
+        kliknij_odswiez(s)  # uruchomienie +1
+        sprawdz(s.pg.evaluate('nauka.wersja') == re.search(r"const WERSJA='([^']*)';", nowe['index.html'].decode()).group(1),
+                'po odświeżeniu nie działa nowa wersja')
+        porownaj_zapis(przed, s.pg.evaluate(STAN_JS), 2, 'po przejściu z wersji produkcyjnej')
+        s.pg.reload()
+        porownaj_zapis(przed, s.pg.evaluate(STAN_JS), 3, 'po kolejnym starcie nowej wersji')
+        s.bez_bledow()
+    finally:
+        s.zamknij()
+        srv.stop()

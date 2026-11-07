@@ -533,7 +533,7 @@ const mastered=(x,temat=CUR)=>{const s=Z.items[itemKey(temat,x.id)];return s&&s.
 function postepTematu(p){const all=[...checkable(p),...p.cards];return {done:all.filter(x=>mastered(x,p.id)).length,all:all.length};}
 
 /* ============ trwałość, wersja, aktualizacje ============ */
-const WERSJA='2026-11-04.b2b4e753';
+const WERSJA='2026-11-07.7b759ff8';
 let TRWALA=null;
 async function trwalosc(){
   if(!(navigator.storage&&navigator.storage.persist)){TRWALA='brak';odswiezStatus();return;}
@@ -545,9 +545,13 @@ function rejestrujSW(){
   if(!ONLINE_MODE||!('serviceWorker' in navigator))return;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(chceAktualizacji){chceAktualizacji=false;location.reload();}});
   navigator.serviceWorker.register('sw.js').then(reg=>{
+    // bez kontrolera to pierwsza instalacja: nie ma starej wersji do zastąpienia
     const sprawdz=()=>{if(reg.waiting&&navigator.serviceWorker.controller)pokazAktualizacje(reg.waiting);};
+    const sledz=w=>{if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')sprawdz();});};
     sprawdz();
-    reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')sprawdz();});});
+    // nowa wersja mogła zacząć się instalować, zanim register() się rozstrzygnął, a wtedy updatefound już minął
+    sledz(reg.installing);
+    reg.addEventListener('updatefound',()=>sledz(reg.installing));
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
   }).catch(()=>{});
 }
