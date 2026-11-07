@@ -291,6 +291,39 @@ Sprawdziłem, że test nie jest pusty. Na poprzednim `index.html` pada na filtrz
 
 **Na telefonie zostaje do sprawdzenia**: czy po odświeżeniu do wersji `2026-11-04.b2b4e753` okno wyboru pokazuje `postep-….json` w Pobranych. Jeśli nie, przyczyna jest gdzie indziej (np. uprawnienia do Pobranych) i zostaje wklejenie tekstu w ustawieniach.
 
+## Po wdrożeniu: pasek nowej wersji przy wyścigu instalacji (7 listopada 2026)
+
+**Błąd**: strona po `register()` nasłuchiwała tylko `updatefound`. Jeśli nowa wersja zaczęła się instalować, zanim `register()` się rozstrzygnął, `updatefound` już minął, `reg.waiting` było jeszcze puste, a nikt nie śledził `reg.installing`. Pasek „Jest nowa wersja, odśwież.” się nie pokazywał. Nowa wersja czekała wtedy do następnego otwarcia aplikacji albo do powrotu na ekran (`visibilitychange`, `reg.update()`).
+
+**Poprawka** ([`9433ae1`](https://github.com/akku1906/nauka/commit/9433ae1)), przeniesiona z `akku1906/antykithira` `8abf280`: zaraz po rejestracji strona sprawdza `reg.waiting` (jak dotąd) i dodatkowo śledzi `reg.installing`. Gdy ten przejdzie w `installed`, pokazuje pasek. `updatefound` dalej śledzi każdą kolejną instalację. Bez kontrolera (pierwsza instalacja) paska nie ma, jak wcześniej. Nowa wersja powłoki to `2026-11-07.7b759ff8`.
+
+**Dwie pozostałe poprawki z antykithiry nie były potrzebne**, bo nauka miała je od początku:
+
+- `cache: 'reload'` przy instalacji. `sw.js` nauki od Fazy 2 zapisuje powłokę przez `new Request(…, {cache:'reload'})`, więc nowa wersja nie zapisze starych plików z pamięci HTTP (Pages wysyła `max-age=600`).
+- Szukanie tylko we własnej pamięci wersji. W antykithirze `caches.match()` przeszukiwał wszystkie pamięci, więc czekająca wersja mogła mieszać pliki z bieżącą. Nauka podaje powłokę z `caches.open(POWLOKA).match(…)`, czyli tylko z pamięci swojej wersji. Tematy mają jedną wspólną pamięć `nauka-tematy` celowo: są „najpierw sieć”, niezależne od wersji powłoki i nie wchodzą do jej skrótu (decyzje 11 i 12).
+
+`sw.js` zmienił się więc tylko numerem wersji.
+
+**Co ustaliłem o samym wyścigu (zmierzone w Chromium)**: `register()` dla istniejącej rejestracji trafia do tej samej kolejki zadań co aktualizacja i rozstrzyga się dopiero po zakończeniu instalacji, już z gotowym `waiting`. Ten przypadek stary kod łapał. Zgubiony `updatefound` zostaje więc rzadkim wyścigiem między kanałami komunikacji przeglądarki ze stroną. Nie da się go wywołać naturalnie w teście, dlatego test podaje stronie wprost stan, który taki wyścig zostawia. Poprawka kosztuje jedną linię i nie zmienia żadnej innej ścieżki.
+
+**Testy**:
+
+- **Test 20** (`test_20_wyscig_instalacji_i_rejestracji`). Uczennica ma zapisany postęp, na serwerze leży nowa wersja z instalacją wydłużoną o 2 s (wolna sieć). `register()` oddaje rejestrację dopiero wtedy, gdy nowa wersja już się instaluje, a `updatefound` już minął. Test najpierw sprawdza, że scenariusz naprawdę zaszedł, potem że pasek się pokazał, a strona nie przeładowała się sama. Po „Odśwież” działa nowa wersja, a zapis `nauka:*` jest ten sam, poza licznikiem uruchomień (+1). **Na starym `index.html` test pada** z komunikatem „nowa wersja zaczęła się instalować przed rozstrzygnięciem register(), a pasek … się nie pokazał”. Sprawdzone dwukrotnie.
+- **Test 21** (`test_21_aktualizacja_z_wersji_produkcyjnej_zachowuje_zapis`). Stara wersja to dokładnie `index.html` i `sw.js` z commitu `6c4695d`, czyli to, co było na produkcji (`2026-11-04.b2b4e753`), a nowa to obecne repozytorium. Uczennica rozwiązuje zadanie dobrze w figurach i źle w liczbach na starej wersji, potem przechodzi na nową przez pasek i „Odśwież”. Sprawdzane: wszystkie klucze `nauka:` (postęp `nauka:<temat>:<id>`, ustawienia, migracja) bajt w bajt te same, data pierwszego uruchomienia ta sama, licznik uruchomień większy dokładnie o liczbę przeładowań (2, a po kolejnym starcie 3), lista baz IndexedDB bez zmian (aplikacja IndexedDB nie używa, więc test pilnuje, żeby nic tam nie powstało ani nie znikło), w zapisie jest postęp zadań.
+
+**Pułapka w samym teście**: test 21 początkowo padał w mniej więcej połowie przebiegów. Diagnoza z logu serwera: lokalny serwer testowy podaje `Last-Modified` z dokładnością do sekundy, a test jest tak szybki, że stary i nowy `sw.js` trafiały w tę samą sekundę. Wtedy przeglądarka dostawała 304 i nie widziała nowej wersji. To nie był błąd aplikacji: Pages porównuje `ETag` (sprawdzone `curl -I`). Stara wersja w teście ma teraz datę modyfikacji sprzed minuty. Po poprawce testy 20 i 21 przeszły 10 razy z rzędu.
+
+**Wyniki**: lokalnie **31 z 31**. Po pushu na `main` (`6c4695d..9433ae1`) Pages podał nową wersję po około 25 sekundach. `curl` daje 200 i pliki identyczne z repozytorium (porównanie bajt w bajt) dla `/nauka/`, `index.html`, `sw.js`, manifestu, `.nojekyll`, katalogu, obu tematów i czterech ikon. Testy na produkcji: **5 z 5** (1, 5, 8, 9, 19). Testy 20 i 21 podmieniają pliki na serwerze, więc biegną tylko lokalnie.
+
+**Na telefonie**:
+
+1. Otwórz aplikację ikoną „Nauka” z internetem. Na dole powinien pojawić się pasek „Jest nowa wersja, odśwież.” To jeszcze stary kod wykrywa poprawkę, więc pasek może się nie pokazać. Wtedy zamknij aplikację (także z listy ostatnich aplikacji) i otwórz ją ponownie. Wtedy pasek pojawi się od razu, albo aplikacja otworzy się już w nowej wersji.
+2. Stuknij „Odśwież”. Na dole listy tematów, w pasku stanu, ma być „Wersja 2026-11-07.7b759ff8”.
+3. Sprawdź, że postęp został: numer uruchomienia w pasku stanu jest o jeden lub dwa większy niż przed aktualizacją, nie zaczyna się od 1, a data pierwszego uruchomienia jest ta sama. W „Powtórce błędów” są dawne błędy.
+4. Dla pewności przed aktualizacją możesz zrobić „Zapisz postęp do pliku”. Nie jest to konieczne, bo aktualizacja nie dotyka zapisu, ale kopia nic nie kosztuje.
+
+Od tej wersji pasek pojawia się także wtedy, gdy nowa wersja zacznie się instalować w trakcie startu aplikacji.
+
 ## Instrukcja dla rodzica: prawdziwy telefon z Androidem
 
 Potrzebne: telefon z Chrome, internet na czas instalacji, stara wersja aplikacji otwierana z pliku (ta, na której jest dotychczasowy postęp).
@@ -358,7 +391,11 @@ Stara wersja z pliku dalej działa, ale ma swój osobny postęp. Po przeniesieni
 26. **Wiersz Prawda/Fałsz może zawinąć przyciski pod zdanie.** Dlaczego: przy 360 px długie słowo („przeciwprostokątna”) i dwa przyciski 64 px nie mieszczą się w jednej linii, a strona robiła się szersza od ekranu (wykrył to test 12 na nowym `g26`).
 27. **Pola wyboru pliku bez `accept`, walidacja po wczytaniu.** Dlaczego: na Androidzie filtr z `accept` usuwał z okna wyboru plik `.json`, którego typ MIME w Pobranych nie pasował (najpewniej `application/octet-stream`). Bez filtra telefon pozwoli wybrać cokolwiek, więc aplikacja sprawdza plik sama: pusty, większy niż 5 MB, binarny (znak `\0` albo więcej niż 0,2% znaków nieczytelnych w UTF-8), temat zamiast postępu i odwrotnie, JSON bez danych postępu. Komunikat podaje nazwę pliku, jest czerwony i ma `role="alert"`, a zapis zostaje nietknięty. Alternatywa: rozszerzyć `accept` o `application/octet-stream`, ale wtedy dalej zależymy od tego, jaki typ nada plikowi konkretny telefon i konkretna przeglądarka.
 
+28. **Z poprawki antykithiry (`8abf280`) przeniesione tylko śledzenie `reg.installing`.** Dlaczego: `cache:'reload'` i pamięć powłoki osobna dla każdej wersji nauka miała od Fazy 2, więc ich dopisanie nic by nie zmieniło. Alternatywa: przepisać całą rejestrację na wzór antykithiry (`skipWaiting` z `{type:…}`), ale wtedy zmieniłby się kontrakt wiadomości `{typ:'aktywuj'}` między stroną a działającym już na telefonach `sw.js`.
+29. **Test 20 podaje stronie stan po wyścigu wprost**, przez nakładkę na `register()` w teście. Dlaczego: w Chromium `register()` czeka w kolejce za instalacją, więc naturalnie ten stan zdarza się rzadko i niedeterministycznie. Alternatywa: test, który wywołuje wyścig „naturalnie”, ale wtedy przechodziłby także na starym kodzie i niczego by nie dowodził.
+
 ## Ściany
 
 1. **`Page.getInstallabilityErrors` w domyślnym trybie headless Playwrighta zwraca pustą listę zawsze**, także dla strony bez manifestu (sprawdzone na trzech zepsutych wariantach). Test oparty na nim nic by nie sprawdzał. Obejście: test 08 uruchamia pełne Chromium w nowym trybie headless z flagą `--bypass-app-banner-engagement-checks`. Tam lista działa (każda mutacja daje konkretny błąd) i dodatkowo przychodzi `beforeinstallprompt`.
 2. **Systemowego okna wyboru pliku na Androidzie nie da się odtworzyć w emulacji.** Playwright wstawia plik do pola z pominięciem okna, więc filtr `accept`, który na telefonie ukrywał plik z postępem, przechodził testy. Obejście: pola są bez filtra (decyzja 27), a test 19 pilnuje, żeby filtr nie wrócił, i sprawdza walidację zawartości. Samo okno sprawdza się tylko na telefonie.
+3. **Lokalny serwer testowy ma `Last-Modified` z dokładnością do sekundy** (Python `http.server`). Dwie wersje `sw.js` zapisane w tej samej sekundzie dają 304 i przeglądarka nie widzi aktualizacji. Obejście: test postarza starą wersję o minutę (`postarz` w `test_aplikacja.py`). Produkcji to nie dotyczy, bo Pages wysyła `ETag`.
