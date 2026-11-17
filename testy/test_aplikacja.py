@@ -12,7 +12,7 @@ import sys
 import tempfile
 import time
 
-from pomoc import (DANE, ID_TEMATOW, KORZEN, TEMATY, Strona, kopia_strony, odpowiedz, otworz_zadanie, sprawdz)
+from pomoc import (DANE, ID_KL4, ID_KL8, ID_TEMATOW, KORZEN, TEMATY, Strona, kopia_strony, odpowiedz, otworz_zadanie, sprawdz)
 from serwer import SerwerTestowy
 
 TEKST_ZNACZNIKOW = re.compile(r'<\s*/?\s*(svg|line|text|polygon|path|circle|g)\b|&lt;')
@@ -57,7 +57,7 @@ def test_01_start_bez_bledow_i_lista_tematow(ctx):
         sprawdz(s.pg.locator('[data-klasa="4"]').count() == 1, 'brak wyboru klasy 4')
         s.wybierz_klase('8')
         tematy = s.pg.eval_on_selector_all('[data-temat]', 'e=>e.map(x=>x.dataset.temat)')
-        for t in ID_TEMATOW:
+        for t in ID_KL8:
             sprawdz(t in tematy, f'na liście brak tematu {t}: {tematy}')
         status = s.pg.inner_text('#status')
         sprawdz('uruchomienie nr 1' in status and 'Pamięć trwała' in status, f'pasek stanu: {status}')
@@ -164,7 +164,7 @@ def test_04_trwalosc_i_powtorka_bledow(ctx):
         nr1 = int(re.search(r'uruchomienie nr (\d+)', s.pg.inner_text('#status')).group(1))
         zle = {'mat-e8-liczby': ['k01', 'k03'], 'mat-e8-figury': ['g07']}
         dobre = {'mat-e8-liczby': ['k04'], 'mat-e8-figury': ['g03']}
-        for temat in ID_TEMATOW:
+        for temat in ID_KL8:
             dane = {z['id']: z for z in s.zadania(temat)}
             for zid, ok in [(z, False) for z in zle[temat]] + [(z, True) for z in dobre[temat]]:
                 otworz_zadanie(s, ctx.url, temat, zid)
@@ -176,7 +176,7 @@ def test_04_trwalosc_i_powtorka_bledow(ctx):
         s.ekran('#/', ctx.url)
         nr2 = int(re.search(r'uruchomienie nr (\d+)', s.pg.inner_text('#status')).group(1))
         sprawdz(nr2 == nr1 + 1, f'numer uruchomienia {nr1} -> {nr2}')
-        for temat in ID_TEMATOW:
+        for temat in ID_KL8:
             s.ekran(f'#/t/{temat}', ctx.url)
             s.pg.wait_for_selector('[data-w="bledy"]')
             txt = s.pg.inner_text('[data-w="bledy"]')
@@ -211,7 +211,7 @@ def test_05_offline_po_jednym_starcie(ctx):
             srv.stop()  # prawdziwy brak sieci, także dla service workera
         s.pg.reload()
         s.pg.wait_for_selector('[data-temat]')
-        for temat in ID_TEMATOW:
+        for temat in ID_KL8:
             s.ekran('#/', url)
             s.pg.click(f'[data-temat="{temat}"]')
             s.pg.click('[data-w="kompendium"]')
@@ -625,13 +625,18 @@ def test_17_klasa_4_i_zmiana_klasy(ctx):
     s = ctx.strona()
     try:
         start_z_klasa(ctx, s, klasa='4')
-        sprawdz('Tematy wkrótce' in s.pg.inner_text('main'), 'kl. 4 powinna widzieć „Tematy wkrótce”')
-        sprawdz(s.pg.locator('[data-temat]').count() == 0, 'kl. 4 widzi tematy kl. 8')
+        if ID_KL4:
+            s.pg.wait_for_selector('[data-temat]')
+            widoczne = s.pg.eval_on_selector_all('[data-temat]', 'e=>e.map(x=>x.dataset.temat)')
+            sprawdz(sorted(widoczne) == sorted(ID_KL4), f'kl. 4 widzi {widoczne}, a powinna {ID_KL4}')
+        else:
+            sprawdz('Tematy wkrótce' in s.pg.inner_text('main'), 'kl. 4 powinna widzieć „Tematy wkrótce”')
+            sprawdz(s.pg.locator('[data-temat]').count() == 0, 'kl. 4 widzi tematy kl. 8')
         s.pg.click('.links button:has-text("Ustawienia")')
         s.pg.click('.seg [data-klasa="8"]')
         s.pg.click('.back')
         s.pg.wait_for_selector('[data-temat]')
-        sprawdz(s.pg.locator('[data-temat]').count() == len(ID_TEMATOW), 'po zmianie na kl. 8')
+        sprawdz(s.pg.locator('[data-temat]').count() == len(ID_KL8), 'po zmianie na kl. 8')
         s.pg.reload()
         s.pg.wait_for_selector('[data-temat]')
         s.bez_bledow()

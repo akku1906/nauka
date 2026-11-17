@@ -13,6 +13,9 @@ DANE = pathlib.Path(__file__).resolve().parent / 'dane'
 PLIKI_STRONY = ['index.html', 'sw.js', 'manifest.webmanifest', '.nojekyll', 'ikony', 'tematy']
 TEMATY = json.loads((KORZEN / 'tematy' / 'index.json').read_text(encoding='utf-8'))['tematy']
 ID_TEMATOW = [t['id'] for t in TEMATY]
+# tematy widoczne na liście danej klasy (aplikacja pokazuje tylko tematy wybranej klasy)
+ID_KL8 = [t['id'] for t in TEMATY if str(t['klasa']) == '8']
+ID_KL4 = [t['id'] for t in TEMATY if str(t['klasa']) == '4']
 
 
 class Niepowodzenie(AssertionError):
